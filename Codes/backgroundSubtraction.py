@@ -2,17 +2,21 @@ import os, re, numpy as np
 import skimage.io as io
 from skimage.filters import threshold_otsu as otsu
 from matplotlib import pyplot as plt
+import yaml
 
-bgRounds = ['4_Empty']
-datadir = "../2_Registered"
-savedir = "../3_background_subtracted"
+params = yaml.safe_load(open("./params.yaml", "r"))
+bgRounds = params['background_cycles']
+datadir = params['reg_dir']
+savedir = params['background_subt_dir']
+channels = params["subtraction_channels"]
+
 for fov in sorted(os.listdir(datadir)):
     if not fov.startswith('FOV'):
         continue
     if not os.path.isdir(os.path.join(savedir , fov)):
         os.makedirs(os.path.join(savedir , fov))
         
-    for ch in ['ch00', 'ch02', 'ch03']:
+    for ch in channels:
         bcgImgs = [io.imread('{3}/{0}/MIP_{2}_{0}_{1}.tif'.format(fov, ch, rnd, datadir)) for rnd in bgRounds]
         bcgImg = np.max(bcgImgs, axis = 0)
         # thresh = otsu(bcgImg)/1.5  # 25

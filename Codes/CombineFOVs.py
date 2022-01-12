@@ -6,36 +6,8 @@
 import os, re, numpy as np, pandas as pd
 from scipy.spatial import cKDTree
 from matplotlib import pyplot as plt
-import xml.etree.ElementTree as ET
-
-def getMetaData(metadataXml):
-    """ parses a metadata .xml file and returns 
-        1) size of FOVs in pixels
-        2) physical dimension of the voxels
-        3) #FOVs
-    """ 
-    tree = ET.parse(metadataXml)
-    root = tree.getroot()
-    dimDscrpt = [item for item in root.findall("./Image/ImageDescription/Dimensions/DimensionDescription")]
-    # idDict = ['1' : 'X', '2' : 'Y', '3' : 'Z']
-    n_pixels = {dimInfo.attrib['DimID']: int(dimInfo.attrib['NumberOfElements']) for dimInfo in dimDscrpt if dimInfo.attrib['DimID'] in ['1', '2', '3']}
-    voxelSizes = {}
-    for dimInfo in dimDscrpt: 
-        if dimInfo.attrib['DimID'] not in ['1', '2', '3']:
-            continue
-        unit = dimInfo.attrib['Unit']
-        if unit == 'um':
-            scaleFac = 1
-        elif unit == 'mm':
-            scaleFac = 10 ** 3
-        elif unit == 'm':
-            scaleFac = 10 ** 6
-        voxelSizes[dimInfo.attrib['DimID']] = scaleFac * float(dimInfo.attrib['Length']) / n_pixels[dimInfo.attrib['DimID']]
-
-
-    tiles = [tile for tile in root.findall("./Image/Attachment/Tile")]
-
-    return n_pixels, voxelSizes, len(tiles)
+from code_lib.utils import getMetaData
+import yml
 
 def removeOverlapRolonies(rolonyDf, x_col = 'x', y_col = 'y', removeRadius = 5.5):
     """ For each position, find those rolonies that are very close to other rolonies 
@@ -100,41 +72,38 @@ def makeSpotTable(files_paths, emptyFractionCutoff, voxel_info, removeRadius=5.5
 
     return allspots_trimmed, allspots_reduced, allspots_highDist
 
+params = yaml.safe_load(open("./params.yaml", "r"))
 
-decoding_dir = '../4_Decoded/output_Starfish' # the main directory for decoding 
-bcmags = ["bcmag0.9"]
-# bcmags = [file for file in os.listdir(decoding_dir) 
-#           if os.path.isdir(os.path.join(decoding_dir, file)) 
-#               and 'bcmag' in file]  # all the bcmags that were used for the experiment
+decoding_dir = params['dc_out'] # the main directory for decoding 
+bcmags = ["bcmag0.9", "bcmag2.0"]
 
-# VOXEL = {"Y":0.290, "X":0.290, "Z":0.420}  # voxel size info
-RND_ALIGNED = "5_dc3"
-metadataFile = "../1_Projected/MetaData/{0}.xml".format(RND_ALIGNED)
+metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
 npix, vox, number_of_fovs = getMetaData(metadataFile)
 
 VOXEL = {"Y":vox['2'], "X":vox['1'], "Z":vox['3']}
 
 
-emptyFractionThresh = 0.15 # finding a distance that this fraction of decoded spots with smaller distances are empty
-fov_pat = r"FOV(\d+)" # the regex showing specifying the tile names. 
-overlapRemovalRadius = 4.5 # radius in pixels for removing overlaps
+emptyFractionThresh = params['emptyFractionThresh'] # finding a distance that this fraction of decoded spots with smaller distances are empty
+fov_pat = params['fov_pat'] # the regex showing specifying the tile names. 
+overlapRemovalRadius = params['overlapRemovalRadius'] # radius in pixels for removing overlaps
 
 for bcmag in bcmags: 
     print("filtering barcode magnitude: {}".format(bcmag))
-    all_files = [os.path.join(decoding_dir, bcmag, file)
-                 for file in os.listdir(os.path.join(decoding_dir, bcmag))
+    savingpath = decoding_dir + "_" + bcmag
+    all_files = [os.path.join(savingpath, file)
+                 for file in os.listdir(os.path.join(savingpath))
                  if re.search(fov_pat, file)]
     all_files.sort(key = lambda x: int(re.search(fov_pat, x).group(1)))
     filtered_spots, overlapFree_spots, removed_spots = makeSpotTable(all_files, emptyFractionThresh, VOXEL, removeRadius=overlapRemovalRadius)
-    filtered_spots.reset_index(drop = True).to_csv(os.path.join(decoding_dir, bcmag, 'all_spots_filtered.tsv'), sep = '\t')
+    filtered_spots.reset_index(drop = True).to_csv(os.path.join(savingpath, 'all_spots_filtered.tsv'), sep = '\t')
     
-    overlapFree_spots.reset_index(drop = True).to_csv(os.path.join(decoding_dir, bcmag, 'all_spots_overlapFree.tsv'), sep = '\t')
+    overlapFree_spots.reset_index(drop = True).to_csv(os.path.join(savingpath, 'all_spots_overlapFree.tsv'), sep = '\t')
     
     removed_spots = removed_spots.loc[removed_spots['gene'] != 'Empty']
-    removed_spots.reset_index(drop = True).to_csv(os.path.join(decoding_dir, bcmag, 'all_removed_spots.tsv'), sep = '\t')
+    removed_spots.reset_index(drop = True).to_csv(os.path.join(savingpath, 'all_removed_spots.tsv'), sep = '\t')
 
     plt.figure()
     plt.plot(overlapFree_spots['distance'], overlapFree_spots['cum_empty_frac'], '*')
     plt.xlabel("barcode distance")
     plt.ylabel("empty fraction")
-    plt.savefig(os.path.join(decoding_dir, bcmag, 'distance_emptyRate_plot.png'))
+    plt.savefig(os.path.join(savingpath, 'distance_emptyRate_plot.png'))

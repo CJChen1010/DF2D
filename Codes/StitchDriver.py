@@ -2,7 +2,8 @@ import os, re, code_lib.IJ_stitch_201020 as IJS
 import shutil, sys
 from datetime import datetime
 import pandas as pd, numpy as np
-import xml.etree.ElementTree as ET
+from code_lib.utils import getTileLocs
+import yaml
 
 """ We want to stitch all channels of all cycles of DART-FISH.
     Since all the images that need to be stitched have to in the same directory, 
@@ -36,32 +37,6 @@ def createTileConfig(tileNames, tileLocs, outfile):
             line = "{0}; ; ({1}, {2})\n".format(file, x, y)
             writer.writelines(line)
 
-def getTileLocs(metadataXml):
-    """ Getting the nominal location of the tiles. In the metadata file, the location unit is meters. 
-        We convert this into pixels by finding the pixel size. The 0,0 coordinate will correspond to the first tile.
-        For now, we assume the pixel size in x and y directions are similar and this value doesn't changed per cycle.
-    """
-    tree = ET.parse(metadataXml)
-    root = tree.getroot()
-    tiles = [tile for tile in root.findall("./Image/Attachment/Tile")]
-
-    dimInfo = [item for item in root.findall("./Image/ImageDescription/Dimensions/DimensionDescription")][0]
-    unit = dimInfo.attrib['Unit']
-    if unit == 'um':
-        scaleFac = 10 ** -6
-    elif unit == 'mm':
-        scaleFac = 10 ** -3
-    elif unit == 'm':
-        scaleFac = 1
-    pxSize = scaleFac * float(dimInfo.attrib['Length']) / int(dimInfo.attrib['NumberOfElements'])
-
-    x_0, y_0 = float(tiles[0].attrib['PosX']), float(tiles[0].attrib['PosY'])
-    tiles_px = []
-    for tile in tiles:
-        pos_x = np.round((float(tile.attrib['PosX']) - x_0) / pxSize, 2)
-        pos_y = np.round((float(tile.attrib['PosY']) - y_0) / pxSize, 2)
-        tiles_px.append((pos_x, pos_y))
-    return tiles_px
 
 def changeTileConfig(reffile, nrefile, nrefNames, fov_pat):
     """ Looping through all lines of the reference tile config, and change the channel
@@ -124,29 +99,33 @@ def readStitchInfo(infoFile, rgx):
 
         return pd.DataFrame({'fov' : positions, 'x' : xs, 'y' : ys})
 
-    
-    
-data_dir = '../3_background_subtracted'
 
-stitch_dir = '../3_background_subtracted/stitched'
+params = yaml.safe_load(open("./params.yaml", "r"))    
+
+# if background subtracted data available, stitch that; otherwise stitch registered data    
+if params['background_subtraction']:
+    data_dir = params['background_subt_dir']
+else:
+    data_dir = params['reg_dir']
+
+stitch_dir = params['stitch_dir']
 
 """ names of rounds to be stitched"""
-rounds = ['0_anchor', '1_dc0', '2_dc1', '3_dc2', '5_dc3', '6_dc4', '7_dc5', '8_dc6', '9_DRAQ5'] # names of the rounds to be stitched
+rounds = params['stch_rounds']# names of the rounds to be stitched
 
-stitchRef = '5_dc3' # the round to be used as the reference for stitching
-stitchChRef = 'ch01' # default reference channel for stitching
+stitchRef = params['ref_reg_cycle'] if params['stitchRefCycle'] is None else params['stitchRefCycle'] # the round to be used as the reference for stitching
+stitchChRef = params['ref_reg_ch'] if params['stitchChRef'] is None else params['stitchChRef'] # default reference channel for stitching
 
 """ Getting the nominal tile location of the reference round using the metadata file"""
-metadataFile = "../1_Projected/MetaData/{0}.xml".format(stitchRef)
+metadataFile = "../1_Projected/MetaData/{}.xml".format(params['ref_reg_cycle'])
 tileLocs = getTileLocs(metadataFile)
 
 
 """ Stitching Inputs"""
 # IJS.IJ_Stitch.getImageJ('/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching') # can be used to download ImageJ the first time
-ij_path = os.path.join('/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching',
-                       'Fiji.app', 'ImageJ-linux64')
+ij_path = params['ij_path']
 
-fovs = [file for file in os.listdir(data_dir) if re.match("FOV\d+", file)]
+fovs = [file for file in os.listdir(data_dir) if re.match(params['fov_pat'], file)]
 fovs = sorted(fovs, key = lambda x: int(x[3:]))
 
 if not os.path.isdir(stitch_dir):
@@ -155,8 +134,8 @@ if not os.path.isdir(stitch_dir):
 
 """ Regex that explains the file names. Group "ch" is important to be set. """
 # filePattern = r"(?P<intro>\S+)?_(?P<rndName>\S+)_(?P<fov>FOV\d+)_(?P<ch>ch\d+)\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: chfile_regex = re.compile(filePattern)
-filePattern = r"(?P<intro>MIP)_(?P<rndName>\d+_\S+)?_(?P<fov>FOV\d+)_(?P<ch>ch\d+)\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: chfile_regex = re.compile(filePattern)
-fov_pat = r"(FOV)\d+" # pattern to extract the fov# 
+filePattern = params['stchFilePattern']
+fov_pat = params['fov_pat'] # pattern to extract the fov# 
 fov_sub = r"\1{" + ''.join(len(str(len(fovs))) * ['i']) + "}" # string to substitute the fov# with {ii} or {iii}
 
 

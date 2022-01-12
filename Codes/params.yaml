@@ -1,0 +1,138 @@
+---
+ ######## Registration paramteres ########
+ # where the microscope 3D data is stored
+ dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/211112_PermeabilizationTest2/K2100218_1-B/"
+
+ # where the maximum projected data is stored
+ proj_dir: "../1_Projected/"
+
+ # where the registered data is stored
+ reg_dir: "../2_Registered/"
+
+ # list of all rounds to be registered
+ reg_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "4_Empty", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
+
+ # number of field of views
+ n_fovs: 87
+
+ # sigma value for initial gaussian blurring
+ sigma: 0.2
+
+ # reference cycle for registration 
+ ref_reg_cycle: "5_dc3" 
+
+ # channel for registration on all cycles except those specified in `cycle_other`
+ ref_reg_ch: "ch01" # DIC channel for reference cycle
+ 
+ # A dictionary. Keys are the names of the cycles that are different from the ref cycle. Values are the channel used for registration
+ cycle_other: {} # example: {"9_DRAQ5" : "ch00"}
+ 
+ # number of parallel jobs for registration
+ reg_npool: 5
+
+
+
+
+ ######## Background subtraction paramteres ########
+ # if there is a background cycle to subtract from all other cycles
+ background_subtraction: true # false
+
+ # background cycles names. Doesn't matter if `background_subtraction` is false. 
+ background_cycles: ["4_Empty"]
+
+ # where to write background subtraction results. 
+ background_subt_dir: "../2_Registered/Background_subtracted/"
+
+ # channels to do background subtraction on
+ subtraction_channels: ['ch00', 'ch02', 'ch03']
+
+
+
+
+ ######## Stitching paramteres ########
+ # where stitching results are saved 
+ stitch_dir: "../2_Registered/stitched/"
+
+ # rounds to be stitched. Has to be compatible with `reg_rounds`
+ stch_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
+
+ # the round to be used as the reference for stitching. if null, uses `ref_reg_cycle`
+ stitchRefCycle: null # or "5_dc3"
+
+ # default reference channel for stitching, if null uses ref_reg_ch
+ stitchChRef: null # or "ch01"
+
+ # # microscope metadata file. should be at ../1_Projected/MetaData/'ref_reg_cycle'.xml
+ # metadataFile: "../1_Projected/MetaData/5_dc3.xml"
+
+ # Image-j path
+ ij_path: "/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching/Fiji.app/ImageJ-linux64/"
+
+ # the regex pattern with the file names
+ stchFilePattern: "(?P<intro>MIP)_(?P<rndName>\\d+_\\S+)?_(?P<fov>FOV\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: ch
+ 
+ # the regex pattern for fov names
+ fov_pat: "(FOV)\\d+" # pattern to extract the fov# 
+
+
+
+
+ ######## Starfish format paramteres ########
+ # rounds for decoding. The order has to match the codebook
+ dc_rounds: ["1_dc0", "2_dc1", "3_dc2", 5_dc3", "6_dc4", "7_dc5", "8_dc6"]
+
+ # the nuclear stain round
+ stain_round: ["9_DRAQ5"]
+
+ # directory for starfish data
+ starfish_dir: "../4_Decoded/data_Starfish"
+
+ # path to codebook
+ codebook_path: "_codebook/HLK2021_kidney_codebook.json"
+
+ # number of decoding rounds
+ n_rounds: 7
+
+ # number of fluorescent channels
+ n_fluor_ch: 3
+
+ # number of z-planes for decoding
+ n_zplanes: 1
+
+
+
+
+ ######## Decoding paramteres ########
+ # where decoding results will be stored + prefix
+ dc_out: "../4_Decoded/output_Starfish"
+
+ # intensities are scaled such that values higher than this are set to 255. Set to null for no normalization
+ max_intensity: 100
+
+ # intensities below this value are set to 0
+ min_intensity: 0
+
+ # valid area range for rolonies
+ rolony_area: [2, 100]
+
+ # number of pools for decoding
+ dc_npool: 5
+
+
+
+
+ ######## Combining FOV's paramteres ########
+ # maximum fraction of empty barcodes
+ emptyFractionThresh: 0.15
+
+ # radius in pixels for removing rolonies in overlapping boundaries
+ overlapRemovalRadius: 4.5
+
+
+
+
+ ######## Segmentation paramteres ########
+ 
+ ######## QC paramteres ########
+
+ 

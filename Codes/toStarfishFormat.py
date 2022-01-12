@@ -18,47 +18,9 @@ from starfish.experiment.builder import write_experiment_json
 from starfish.types import Axes, Coordinates, Features, Number
 #from starfish.util.argparse import FsExistsType
 from shutil import copy2
-import xml.etree.ElementTree as ET
+from code_lib.utils import getMetaData
+import yml
 
-def getMetaData(metadataXml):
-	""" parses a metadata .xml file and returns 
-		1) size of FOVs in pixels
-		2) physical dimension of the voxels
-		3) #FOVs
-    """ 
-	tree = ET.parse(metadataXml)
-	root = tree.getroot()
-	dimDscrpt = [item for item in root.findall("./Image/ImageDescription/Dimensions/DimensionDescription")]
-	# idDict = ['1' : 'X', '2' : 'Y', '3' : 'Z']
-	n_pixels = {dimInfo.attrib['DimID']: int(dimInfo.attrib['NumberOfElements']) for dimInfo in dimDscrpt if dimInfo.attrib['DimID'] in ['1', '2', '3']}
-	voxelSizes = {}
-	for dimInfo in dimDscrpt: 
-		if dimInfo.attrib['DimID'] not in ['1', '2', '3']:
-			continue
-		unit = dimInfo.attrib['Unit']
-		if unit == 'um':
-			scaleFac = 1
-		elif unit == 'mm':
-			scaleFac = 10 ** 3
-		elif unit == 'm':
-			scaleFac = 10 ** 6
-		voxelSizes[dimInfo.attrib['DimID']] = scaleFac * float(dimInfo.attrib['Length']) / n_pixels[dimInfo.attrib['DimID']]
-
-
-	tiles = [tile for tile in root.findall("./Image/Attachment/Tile")]
-
-	return n_pixels, voxelSizes, len(tiles)
-
-
-RND_LIST = ['1_dc0', '2_dc1', '3_dc2', '5_dc3', '6_dc4', '7_dc5', '8_dc6', '9_DRAQ5']
-RND_ALIGNED = "5_dc3"
-RND_DRAQ5 = RND_LIST[-1]
-
-metadataFile = "../1_Projected/MetaData/{0}.xml".format(RND_ALIGNED)
-npix, vox, number_of_fovs = getMetaData(metadataFile)
-
-SHAPE = {Axes.Y: npix['2'], Axes.X: npix['1']}
-VOXEL = {"Y":vox['2'], "X":vox['1'], "Z":vox['3']}
 
 class DARTFISHTile(FetchedTile):
 	def __init__(self, file_path):
@@ -75,8 +37,9 @@ class DARTFISHTile(FetchedTile):
 		fov_dir = os.path.dirname(self.file_path)
 		registered_dir = os.path.dirname(fov_dir)
 		fov = os.path.basename(fov_dir)
+		
 		#read coordinates file
-		coordinatesTablePath = os.path.join(registered_dir,"stitched","registration_reference_coordinates.csv")
+		coordinatesTablePath = stitch_coords
 		
 		if os.path.exists(coordinatesTablePath):
 			coordinatesTable = pd.read_csv(coordinatesTablePath)
@@ -123,11 +86,11 @@ class DARTFISHPrimaryTileFetcher(TileFetcher):
 		return round_dict
 
 	def get_tile(self, fov: int, r: int, ch: int, z: int) -> FetchedTile:
-		filename = "MIP_{}_FOV{:02d}_{}.tif".format(self.round_dict[r],
-												fov,
+		filename = "MIP_{}_FOV{}_{}.tif".format(self.round_dict[r],
+												format_fov(fov),
 												self.ch_dict[ch]
 												)
-		file_path = os.path.join(self.input_dir,"FOV{:02d}".format(fov), filename)
+		file_path = os.path.join(self.input_dir,"FOV{}".format(format_fov(fov)), filename)
 		return DARTFISHTile(file_path)
 #	def get_tile(self, fov: int, r: int, ch: int, z: int) -> FetchedTile:
 #		return DARTFISHTile(os.path.join(self.input_dir, "Subtracted","Pos{:02d}".format(fov+1),
@@ -139,7 +102,7 @@ class DARTFISHnucleiTileFetcher(TileFetcher):
 		self.path = path
 
 	def get_tile(self, fov: int, r: int, ch: int, z: int) -> FetchedTile:
-		file_path = os.path.join(self.path,"FOV{:02d}".format(fov),"MIP_{}_FOV{:02d}_ch00.tif".format(RND_DRAQ5,fov))
+		file_path = os.path.join(self.path,"FOV{}".format(format_fov(fov)),"MIP_{}_FOV{}_ch00.tif".format(RND_DRAQ5,format_fov(fov)))
 		return DARTFISHTile(file_path)
 
 class DARTFISHbrightfieldTileFetcher(TileFetcher):
@@ -147,7 +110,7 @@ class DARTFISHbrightfieldTileFetcher(TileFetcher):
 		self.path = path
 
 	def get_tile(self, fov: int, r: int, ch: int, z: int) -> FetchedTile:
-		file_path = os.path.join(self.path,"FOV{:02d}".format(fov),"MIP_{}_FOV{:02d}_ch01.tif".format(RND_ALIGNED,fov))
+		file_path = os.path.join(self.path,"FOV{}".format(format_fov(fov)),"MIP_{}_FOV{}_ch01.tif".format(RND_ALIGNED,format_fov(fov)))
 		return DARTFISHTile(file_path)
 
 
@@ -222,15 +185,33 @@ def format_data(input_dir, output_dir, fov_count, codebook_path, rounds = 6, cha
 	)
 	overwrite_codebook(codebook_path,output_dir)
 
+def format_fov(fovnum):
+	n_dig = len(str(number_of_fovs))
+	return str(fovnum).zfill(n_dig)
+
+params = yaml.safe_load(open("./params.yaml", "r")) 
+
+RND_LIST = params['dc_rounds']
+RND_ALIGNED = params['ref_reg_cycle']
+RND_DRAQ5 = params['stain_round']
+
+metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+npix, vox, number_of_fovs = getMetaData(metadataFile)
+
+SHAPE = {Axes.Y: npix['2'], Axes.X: npix['1']}
+VOXEL = {"Y":vox['2'], "X":vox['1'], "Z":vox['3']}
 
 	
-input_dir = '../3_background_subtracted'
-output_dir = '../4_Decoded/data_Starfish'
-codebook_path = '_codebook/HLK2021_kidney_codebook.json'
+input_dir = params['background_subt_dir'] if params['background_subtraction'] else params['reg_dir']
+output_dir = params['starfish_dir']
+codebook_path = params['codebook_path']
+
+stitch_coords = os.path.join(params['stitch_dir'], 'registration_reference_coordinates.csv')
 
 if not os.path.exists(codebook_path):
 	raise FileNotFoundError("Codebook Not Found.")
 if not os.path.exists(output_dir):
 	os.makedirs(output_dir)
-format_data(input_dir, output_dir, number_of_fovs, codebook_path, rounds = 7, channels = 3, zplanes = 1)	
+format_data(input_dir, output_dir, number_of_fovs, codebook_path, rounds = params['n_rounds'], 
+			channels = params['n_fluor_ch'], zplanes = params['n_zplanes'])	
 

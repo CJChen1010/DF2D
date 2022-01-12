@@ -11,7 +11,8 @@ import scipy.ndimage as ndimage
 from code_lib import tifffile as tiff # <http://www.lfd.uci.edu/~gohlke/code/tifffile.py> # Kian: added 201011
 from multiprocessing import Pool 	# Kian: added 210323
 import functools	# Kian: added 210323
-
+import yaml	# Kian: added 220111
+from code_lib.utils import # Kian: added 220111
 
 
 def listdirectories(directory='.', pattern = '*'):	# Kian: added 201011
@@ -73,7 +74,7 @@ def mip_gauss_tiled(fov, rnd, dir_root, dir_output='./MIP_gauss',
 	# change directory back to original
 	chdir(current_dir)
 
-def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, cycle_reference):
+def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, reference_cycle):
 	print(datetime.now().strftime("%Y-%d-%m_%H:%M:%S: {} started to align".format(fov)))
 
 	""" mip_dir has to be a relative path, not an absolute path, i.e. "../"""
@@ -93,58 +94,45 @@ def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other,
 				originMatchingChannel = channel_DIC if rnd not in cycle_other else channel_DIC_other[rnd],
 				destinationMatchingChannel = channel_DIC_reference, 
 				imagesPosition = fov, 
-				destinationCycle = cycle_reference,
+				destinationCycle = reference_cycle,
 				originCycle = rnd,
 				resultDirectory = "./",
 				MaximumNumberOfIterations = 400)
 
 	os.chdir(init_dir)
 
+params = yaml.safe_load(open("./params.yaml", "r"))
 
 #Raw Data Folder
-dir_data_raw = '/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/211112_PermeabilizationTest2/K2100218_1-B/'
+dir_data_raw = params['dir_data_raw']
 
 #Where MIPs are written to
-dir_output = "../1_Projected"
+dir_output = params['proj_dir']
 if not path.isdir(dir_output):
 	makedirs(dir_output)
 
 #Where Aligned MIPs are written to
-dir_output_aligned = "../2_Registered"
+dir_output_aligned = params['reg_dir']
 if not path.isdir(dir_output_aligned):
 	makedirs(dir_output_aligned)
 
 #rounds
-rnd_list = ['0_anchor', '1_dc0', '2_dc1', '3_dc2', '4_Empty', '5_dc3', '6_dc4', '7_dc5', '8_dc6', '9_DRAQ5']
-print(rnd_list)
-
-# """ Adhoc: Upsampling 1_round1_mip!"""
-# import numpy as np
-# import skimage 
-# if not path.isdir(path.join(dir_data_raw, '1_round1_mip_resized')):
-# 	os.mkdir(path.join(dir_data_raw, '1_round1_mip_resized'))
-
-# for file in os.listdir(path.join(dir_data_raw, '1_round1_mip')):
-# 	if not file.endswith('.tif'):
-# 		continue
-# 	# print(path.join(dir_data_raw, '1_round1_mip', file))
-# 	im = skimage.io.imread(path.join(dir_data_raw, '1_round1_mip', file))
-# 	im_res = (skimage.transform.rescale(im, (2, 2), multichannel=False) * 255).astype(np.uint8)
-# 	skimage.io.imsave(path.join(dir_data_raw, '1_round1_mip_resized', file), im_res)
-
-#Number of FOVs
-n_fovs = 87
+rnd_list = params['reg_rounds']
 
 #sigma for gaussian blur
-sigma = 0.2
+sigma = params['sigma']
 
-#Which cycle to align to
-cycle_reference = '5_dc3' # rnd_list[round(len(rnd_list)/2)] 
-channel_DIC_reference = 'ch01' # DIC channel for reference cycle
-channel_DIC = 'ch01' # DIC channel for (non-reference) decoding cycles (the channel we use for finding alignment parameters)
-cycle_other = [] # if there are other data-containing folders which need to be aligned but are not names "CycleXX"
-channel_DIC_other = {} # DIC channel for otPher data-containing folders
+reference_cycle = params['ref_reg_cycle'] # Which cycle to align to
+channel_DIC_reference = params['ref_reg_ch'] # DIC channel for reference cycle
+channel_DIC = channel_DIC_reference # DIC channel for (non-reference) decoding cycles (the channel we use for finding alignment parameters)
+cycle_other = list(params['cycle_other']) # if there are other data-containing folders which need to be aligned but are not names "CycleXX"
+channel_DIC_other = params['cycle_other'] # DIC channel for otPher data-containing folders
 
+#Number of FOVs
+metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+_, _, n_fovs = getMetaData(metadataFile)
+
+n_pool = params['reg_npool']
 
 t0 = time()
 
@@ -193,9 +181,9 @@ sys.stdout = open(reportFile, 'w') # redirecting the stdout to the log file
 
 partial_align = functools.partial(alignFOV, out_mother_dir=dir_output_aligned, round_list=rnd_list, 
 	mip_dir=dir_output, channel_DIC=channel_DIC, cycle_other=cycle_other, 
-	channel_DIC_other=channel_DIC_other, cycle_reference=cycle_reference)
+	channel_DIC_other=channel_DIC_other, reference_cycle=reference_cycle)
 
-with Pool(10) as P:
+with Pool(n_pool) as P:
 	list(P.map(partial_align, position_list))
 print("done")
 
