@@ -7,7 +7,8 @@ import os, re, numpy as np, pandas as pd
 from scipy.spatial import cKDTree
 from matplotlib import pyplot as plt
 from code_lib.utils import getMetaData
-import yml
+import yaml
+import argparse
 
 def removeOverlapRolonies(rolonyDf, x_col = 'x', y_col = 'y', removeRadius = 5.5):
     """ For each position, find those rolonies that are very close to other rolonies 
@@ -72,7 +73,10 @@ def makeSpotTable(files_paths, emptyFractionCutoff, voxel_info, removeRadius=5.5
 
     return allspots_trimmed, allspots_reduced, allspots_highDist
 
-params = yaml.safe_load(open("./params.yaml", "r"))
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
 decoding_dir = params['dc_out'] # the main directory for decoding 
 bcmags = ["bcmag0.9", "bcmag2.0"]

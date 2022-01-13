@@ -17,8 +17,8 @@ from starfish.spots import DetectPixels
 from datetime import datetime
 from multiprocessing import Pool 	# Kian: added 210602
 import functools	# Kian: added 210602
-import yml
-
+import yaml
+import argparse
 
 def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff = 0, normalize_max = None, area_threshold = (1, 100)):
 	''' if normalize_max not None, then all images are linearly normalize by normalize_max '''
@@ -121,7 +121,10 @@ def process_experiment(experiment: starfish.Experiment, output_dir, magnitude_th
 		#regions[name_] = segmentation_results
 #	return decoded_intensities, regions
 
-params = yaml.safe_load(open("./params.yaml", "r"))
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
 dc_npool = params['dc_npool']
 data_dir = params['starfish_dir']
@@ -140,7 +143,7 @@ sys.stdout = open(reportFile, 'x') # redirecting the stdout to the log file
 
 exp = Experiment.from_json(os.path.join(data_dir,"experiment.json"))
 
-for magnitude_threshold in [2.0] #,1.7:
+for magnitude_threshold in [2.0]: #,1.7:
 	output_path = output_dir + "_bcmag{}".format(magnitude_threshold)
 	if not os.path.exists(output_path):
 		os.makedirs(output_path)

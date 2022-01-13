@@ -52,7 +52,7 @@ class Segmentor2D:
             
         return toReturn
   
-    def segment_cyto(self, nuc_imgs, cyto_imgs, diameters = 40, out_files = None, **kwargs):
+    def segment_cyto_nuc(self, nuc_imgs, cyto_imgs, diameters = 40, out_files = None, **kwargs):
         """ Takes a list of nuclear stain images, a list of cytoplasmic stain, one or a list of average diameters 
         of cytoplasms in each image and runs Cellpose to segment the cytoplasm and returns masks in a list
         If diameter is None, run cellpose with automatic diameter detection and also returns estimated diameters
@@ -79,6 +79,42 @@ class Segmentor2D:
                 diameters = len(nuc_imgs) * [diameters]
             for i, img in enumerate(rgb_list):
                 mask, _, _, _ = self.base_model.eval([img], channels = [1, 2], diameter = diameters[i], **kwargs)
+                if mask[0].max() < 2**16 - 1:
+                    initial_masks.append(mask[0].astype(np.uint16))
+            toReturn = initial_masks
+
+        if out_files is not None:
+            self.save_masks(initial_masks, out_files)
+            
+        return toReturn
+
+
+def segment_cyto(self, cyto_imgs, diameters = 40, out_files = None, **kwargs):
+        """ Takes a list of cytoplasmic stain, one or a list of average diameters 
+        of cytoplasms in each image and runs Cellpose to segment the cytoplasm and returns masks in a list
+        If diameter is None, run cellpose with automatic diameter detection and also returns estimated diameters
+        Optional: out_files is a list of addresses to save the masks. """
+        print("Segmenting cells using both nuclear and cytoplasmic stain.")
+        if len(nuc_imgs[0].shape) == 3:
+            print("Images are 3D. TODO: 3D erosion")
+            raise TypeError('3D image loaded instead of 2D')
+        
+        self.base_model = cp.Cellpose(model_type = 'cyto')
+        
+        initial_masks = []
+        if diameters is None:
+            estim_diams = []
+            for img in cyto_imgs:
+                mask, _, _, diam = self.base_model.eval([img], channels = [0, 0])
+                if mask[0].max() < 2**16 - 1:
+                    initial_masks.append(mask[0].astype(np.uint16))
+                estim_diams.append(diam)
+            toReturn = initial_masks, estim_diams
+        else:
+            if not isinstance(diameters, list):
+                diameters = len(cyto_imgs) * [diameters]
+            for i, img in enumerate(cyto_imgs):
+                mask, _, _, _ = self.base_model.eval([img], channels = [0, 0], diameter = diameters[i], **kwargs)
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
             toReturn = initial_masks

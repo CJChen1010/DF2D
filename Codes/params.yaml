@@ -1,7 +1,7 @@
 ---
  ######## Registration paramteres ########
  # where the microscope 3D data is stored
- dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/211112_PermeabilizationTest2/K2100218_1-B/"
+ dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/211013_PermeabilizationTest/K2100233_1-D/"
 
  # where the maximum projected data is stored
  proj_dir: "../1_Projected/"
@@ -12,8 +12,8 @@
  # list of all rounds to be registered
  reg_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "4_Empty", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
 
- # number of field of views
- n_fovs: 87
+ # number of iterations for registration
+ reg_maxIter: 50
 
  # sigma value for initial gaussian blurring
  sigma: 0.2
@@ -28,8 +28,10 @@
  cycle_other: {} # example: {"9_DRAQ5" : "ch00"}
  
  # number of parallel jobs for registration
- reg_npool: 5
+ reg_npool: 6
 
+ # Skip maximum intensity projection (for troubleshooting)
+ skip_mip: false
 
 
 
@@ -62,11 +64,8 @@
  # default reference channel for stitching, if null uses ref_reg_ch
  stitchChRef: null # or "ch01"
 
- # # microscope metadata file. should be at ../1_Projected/MetaData/'ref_reg_cycle'.xml
- # metadataFile: "../1_Projected/MetaData/5_dc3.xml"
-
  # Image-j path
- ij_path: "/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching/Fiji.app/ImageJ-linux64/"
+ ij_path: "/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching/Fiji.app/ImageJ-linux64"
 
  # the regex pattern with the file names
  stchFilePattern: "(?P<intro>MIP)_(?P<rndName>\\d+_\\S+)?_(?P<fov>FOV\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: ch
@@ -79,13 +78,13 @@
 
  ######## Starfish format paramteres ########
  # rounds for decoding. The order has to match the codebook
- dc_rounds: ["1_dc0", "2_dc1", "3_dc2", 5_dc3", "6_dc4", "7_dc5", "8_dc6"]
+ dc_rounds: ["1_dc0", "2_dc1", "3_dc2", "5_dc3", "6_dc4", "7_dc5", "8_dc6"]
 
  # the nuclear stain round
- stain_round: ["9_DRAQ5"]
+ stain_round: "9_DRAQ5"
 
  # directory for starfish data
- starfish_dir: "../4_Decoded/data_Starfish"
+ starfish_dir: "../3_Decoded/data_Starfish"
 
  # path to codebook
  codebook_path: "_codebook/HLK2021_kidney_codebook.json"
@@ -104,7 +103,7 @@
 
  ######## Decoding paramteres ########
  # where decoding results will be stored + prefix
- dc_out: "../4_Decoded/output_Starfish"
+ dc_out: "../3_Decoded/output_Starfish"
 
  # intensities are scaled such that values higher than this are set to 255. Set to null for no normalization
  max_intensity: 100
@@ -132,7 +131,46 @@
 
 
  ######## Segmentation paramteres ########
- 
- ######## QC paramteres ########
+ # where the segmentation and assignment files are saved
+ seg_dir: "../4_CellAssignment"
 
+ # segmentation type for Cellpose. Options: "nuc", "cyto", "nuc+cyto"
+ segmentation_type: "nuc"
+
+ # the round name that contains nuclear stain. Doesn't matter if segmentation_type == 'cyto'
+ nuc_rnd : "9_DRAQ5" 
+
+ # channel for nuclear stain in `nuc_rnd`. Doesn't matter if segmentation_type == 'cyto'
+ nuc_ch: "ch00"
+
+ # the round name that contains cytoplasmic stain. Doesn't matter if segmentation_type == 'nuc'
+ cyto_rnd : "0_anchor"
+
+ # channel for cyto stain in `cyto_rnd`. Doesn't matter if segmentation_type == 'nuc'
+ cyto_ch: "ch02"
+
+ # barcode magnitude to use
+ bcmag: "bcmag0.9"
+
+ # average diameter of cells (for "cyto" and "nuc+cyto") or nuclei (for "nuc") in pixels
+ seg_diam: 30
+
+ # suffix for generated files. Could be "".
+ seg_suf: "_DRAQ5"
+ 
+ # number of cores for finding centroids
+ centroid_npool: 8
+
+ # maximum acceptable distance of rolonies to their closest cell in pixels
+ max_rol2nuc_dist: 150
+
+ ######## QC paramteres ########
+ # where the qc files will be stored
+ qc_dir : "../5_Analysis" 
+
+ # name of anchor round 
+ anc_rnd: "0_anchor"
+
+ # anchor channel, where all rolonies are on
+ anc_ch: "ch00"
  

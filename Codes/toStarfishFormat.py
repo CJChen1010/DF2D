@@ -19,8 +19,7 @@ from starfish.types import Axes, Coordinates, Features, Number
 #from starfish.util.argparse import FsExistsType
 from shutil import copy2
 from code_lib.utils import getMetaData
-import yml
-
+import yaml
 
 class DARTFISHTile(FetchedTile):
 	def __init__(self, file_path):
@@ -189,7 +188,10 @@ def format_fov(fovnum):
 	n_dig = len(str(number_of_fovs))
 	return str(fovnum).zfill(n_dig)
 
-params = yaml.safe_load(open("./params.yaml", "r")) 
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
 RND_LIST = params['dc_rounds']
 RND_ALIGNED = params['ref_reg_cycle']

@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd, numpy as np
 from code_lib.utils import getTileLocs
 import yaml
+import argparse 
 
 """ We want to stitch all channels of all cycles of DART-FISH.
     Since all the images that need to be stitched have to in the same directory, 
@@ -100,7 +101,10 @@ def readStitchInfo(infoFile, rgx):
         return pd.DataFrame({'fov' : positions, 'x' : xs, 'y' : ys})
 
 
-params = yaml.safe_load(open("./params.yaml", "r"))    
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
 # if background subtracted data available, stitch that; otherwise stitch registered data    
 if params['background_subtraction']:

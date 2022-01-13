@@ -4,55 +4,58 @@ import matplotlib.pyplot as plt
 from skimage.feature import blob_log 
 from skimage.io import imread
 import matplotlib.collections as col
+import yaml
+import argparse
 
-def normalize(im, ceil):
-    return (np.clip(im / ceil * 255, a_min=0, a_max = 255)).astype(np.uint8)
+def normalize(im, ceil, amin=0):
+    return (np.clip(im / ceil * 255, a_min = amin, a_max = 255)).astype(np.uint8)
 
-def fov_changer(fov, ndigit = 3):
-    # changing FOVXX to FOVXXX
-    num = int(fov[3:])
-    return("FOV{:03d}".format(num))
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
-savingdir = "./5_Analysis"
+savingdir = params['qc_dir']
+
 rolonyPlotDir = os.path.join(savingdir, "RolPlots")
 
-img_dir = "../3_background_subtracted"
-spot_addr = "../4_Decoded/output_Starfish_maxArea25/bcmag0.9/all_spots_filtered.tsv"
+if params['background_subtraction']:
+    img_dir = params['background_subt_dir']
+else:
+    img_dir = params['reg_dir']
 
-max_int = 50 # normalizing the image to this maximum
-anchor_pat = r"MIP_0_anchor_{fov}_ch00.tif"
+spot_addr = os.path.join(params['dc_out'] + '_' + params['bcmag'], 'all_spots_filtered.tsv')
+
+max_int = params['max_intensity'] # normalizing the image to this maximum
+min_int = params['min_intensity']
+
+anchor_pat = "MIP_" + params['anc_rnd'] + "_{fov}_" + params['anc_ch'] + ".tif"
 fovs = [file for file in os.listdir(img_dir) if file.startswith('FOV')]
 
 if not os.path.isdir(savingdir):
     os.mkdir(savingdir)
 if not os.path.isdir(rolonyPlotDir):
     os.mkdir(rolonyPlotDir)
-# img_dir = "/media/Scratch_SSD_Voyager/Kian/DART-FISH/211013_PermeabilizationTest/Decode_K2100233_1-D/3_background_subtracted/"
-
-# spot_addr = "/media/Scratch_SSD_Voyager/Kian/DART-FISH/211013_PermeabilizationTest/Decode_K2100233_1-D/4_Decoded/output_Starfish_maxArea25/bcmag0.9/all_spots_filtered.tsv"
-
-# img_dir = "/media/Scratch_SSD_Voyager/Kian/DART-FISH/211112_PermeabilizationTest2/Decode-K2100013_3-B/3_background_subtracted/"
-
-# spot_addr = "/media/Scratch_SSD_Voyager/Kian/DART-FISH/211112_PermeabilizationTest2/Decode-K2100013_3-B/4_Decoded/output_Starfish/bcmag0.9/all_spots_filtered.tsv"
-
 
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
 
 
+# running blob detection on all FOVs
 n_blobs = []
 n_rols = []
 all_blobs = []
 for fov in fovs: 
     img_addr = os.path.join(img_dir, fov, anchor_pat.format(fov=fov))
     anc_img = imread(img_addr)
-    this_blb = blob_log(normalize(anc_img, max_int), min_sigma=0.7, 
+    this_blb = blob_log(normalize(anc_img, max_int, min_int), min_sigma=0.7, 
                         max_sigma=2, num_sigma=6, overlap = 0.6, threshold = 0.3)
     all_blobs.append(this_blb)
     n_blobs.append(this_blb.shape[0])
-    n_rols.append(spot_df.loc[spot_df['fov'] == fov_changer(fov, 3)].shape[0])
+    n_rols.append(spot_df.loc[spot_df['fov'] == fov].shape[0])
 
 
+# plotting decoded rolonies vs. anchor blobs
 n_rols, n_blobs = np.array(n_rols), np.array(n_blobs)
 p = np.polyfit(n_rols, y = n_blobs, deg=1 )
 plt.plot([0, np.max(n_rols)], [0, np.max(n_rols)], c = 'green', alpha = 0.5, label = 'x=y line')
@@ -64,6 +67,7 @@ plt.legend()
 plt.savefig(os.path.join(savingdir, "decoded_rolonies-v-anchor_blobs.pdf"))
 
 
+# plotting decoding rate histogram
 dec_rate = n_rols / n_blobs
 fig, ax = plt.subplots()
 ax.hist(dec_rate, bins = 20, alpha = 0.8)
@@ -82,10 +86,10 @@ for i, fov in enumerate(fovs):
     this_blb = all_blobs[i]
     spot_df_fov = spot_df.loc[spot_df['fov'] == fov]
     fig, ax = plt.subplots(figsize = (20, 20))
-    this_blb = blob_log(normalize(anc_img, max_int), min_sigma=0.7, 
+    this_blb = blob_log(normalize(anc_img, max_int, min_int), min_sigma=0.7, 
                         max_sigma=2, num_sigma=6, overlap = 0.6, threshold = 0.3)
 
-    ax.imshow(normalize(anc_img, max_int), cmap = 'gray',alpha=0.9)
+    ax.imshow(normalize(anc_img, max_int, min_int), cmap = 'gray',alpha=0.9)
     circ_patches = []
     for x, y, r in this_blb:
         circ = plt.Circle((y, x), 3 * r, color = 'red', fill = None, alpha=0.8)
@@ -190,3 +194,9 @@ ax[3].legend()
 plt.tight_layout()
 plt.savefig(os.path.join(savingdir, 'rolony_stats.png'), dpi=200)
 
+
+# distance to cell histogram
+plt.figure(figsize = (8, 6))
+plt.hist(spots['dist2cell'], bins = 50)
+plt.title("Distance to nearest cell")
+plt.savefig(os.path.join(savingdir, 'dist2cell_hist.png'), dpi=200)

@@ -1,19 +1,16 @@
-
-# import immac, re, shutil, warnings, sys
 import re, shutil, warnings, sys, os	# Kian: added 201011
 from time import time
 from datetime import datetime
 from code_lib import TwoDimensionalAligner_2 as myAligner # Kian: added 201011
 from os import chdir, listdir, getcwd, path, makedirs, remove,  walk
 import numpy as np
-import matplotlib.pyplot as plt
+from skimage.io import imread, imsave
 import scipy.ndimage as ndimage
-from code_lib import tifffile as tiff # <http://www.lfd.uci.edu/~gohlke/code/tifffile.py> # Kian: added 201011
 from multiprocessing import Pool 	# Kian: added 210323
 import functools	# Kian: added 210323
 import yaml	# Kian: added 220111
-from code_lib.utils import # Kian: added 220111
-
+from code_lib.utils import getMetaData # Kian: added 220111
+import argparse
 
 def listdirectories(directory='.', pattern = '*'):	# Kian: added 201011
 	'''
@@ -48,7 +45,7 @@ def mip_gauss_tiled(fov, rnd, dir_root, dir_output='./MIP_gauss',
 	nImages = len(image_names)
 	image_list = [None]*nImages
 	for i in range(len(image_names)):
-		image_list[i] = (ndimage.gaussian_filter(plt.imread(image_names[i]), sigma=sigma))
+		image_list[i] = (ndimage.gaussian_filter(imread(image_names[i]), sigma=sigma))
 		  
 	# change directory back to original
 	chdir(current_dir)
@@ -69,12 +66,12 @@ def mip_gauss_tiled(fov, rnd, dir_root, dir_output='./MIP_gauss',
 		
 	#Change to output dir and save MIP file
 	chdir(dir_output)
-	tiff.imsave('FOV{}'.format(fov) + '/MIP_' + rnd + '_FOV{}'.format(fov) + '_' + channel_int + '.tif', max_array)
+	imsave('FOV{}'.format(fov) + '/MIP_' + rnd + '_FOV{}'.format(fov) + '_' + channel_int + '.tif', max_array)
 	
 	# change directory back to original
 	chdir(current_dir)
 
-def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, reference_cycle):
+def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, reference_cycle, maxIter):
 	print(datetime.now().strftime("%Y-%d-%m_%H:%M:%S: {} started to align".format(fov)))
 
 	""" mip_dir has to be a relative path, not an absolute path, i.e. "../"""
@@ -97,11 +94,14 @@ def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other,
 				destinationCycle = reference_cycle,
 				originCycle = rnd,
 				resultDirectory = "./",
-				MaximumNumberOfIterations = 400)
+				MaximumNumberOfIterations = maxIter)
 
 	os.chdir(init_dir)
 
-params = yaml.safe_load(open("./params.yaml", "r"))
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
 
 #Raw Data Folder
 dir_data_raw = params['dir_data_raw']
@@ -134,43 +134,46 @@ _, _, n_fovs = getMetaData(metadataFile)
 
 n_pool = params['reg_npool']
 
+maxIter = params['reg_maxIter'] # maximum number of iteractions for registration
+
 t0 = time()
-
-#MIP
-for rnd in rnd_list:
-	if ("DRAQ5" in rnd):
-		channel_list = [0, 1]
-	else:
-		channel_list = [0, 1, 2, 3]
-	
-
-	for channel in channel_list:
-		print('Generating MIPs for ' + rnd + ' channel {0} ...'.format(channel))
-
-		# defining a partial function from mip_gauss_tiled that only take fov as input
-		mip_gauss_partial = functools.partial(mip_gauss_tiled, rnd=rnd, dir_root=dir_data_raw, 
-			dir_output=dir_output, sigma=sigma, channel_int="ch0{0}".format(channel))
-		with Pool(8) as p:
-			list(p.map(mip_gauss_partial, [str(f).zfill(len(str(n_fovs))) for f in range(n_fovs)]))
-
-		print('Done\n')
-
-		# move the metadata file to the output directory
-		metaFile = path.join(dir_data_raw, rnd, 'MetaData', "{0}.xml".format(rnd))
-		if path.isfile(metaFile):
-			if not path.exists(path.join(dir_output, "MetaData")):
-				os.mkdir(path.join(dir_output, "MetaData"))
-
-			shutil.copy2(src = metaFile, 
-				dst = path.join(dir_output, 'MetaData', "{0}.xml".format(rnd)))
+if not params['skip_mip']:
+	#MIP
+	for rnd in rnd_list:
+		if ("DRAQ5" in rnd):
+			channel_list = [0, 1]
 		else:
-			print("MetaData file wasn't found at {}".format(path.join(dir_data_raw, rnd, 'MetaData', "{0}.xml".format(rnd))))
-	
+			channel_list = [0, 1, 2, 3]
+		
+
+		for channel in channel_list:
+			print('Generating MIPs for ' + rnd + ' channel {0} ...'.format(channel))
+
+			# defining a partial function from mip_gauss_tiled that only take fov as input
+			mip_gauss_partial = functools.partial(mip_gauss_tiled, rnd=rnd, dir_root=dir_data_raw, 
+				dir_output=dir_output, sigma=sigma, channel_int="ch0{0}".format(channel))
+			with Pool(n_pool) as p:
+				list(p.map(mip_gauss_partial, [str(f).zfill(len(str(n_fovs))) for f in range(n_fovs)]))
+
+			print('Done\n')
+
+			# move the metadata file to the output directory
+			metaFile = path.join(dir_data_raw, rnd, 'MetaData', "{0}.xml".format(rnd))
+			if path.isfile(metaFile):
+				if not path.exists(path.join(dir_output, "MetaData")):
+					os.mkdir(path.join(dir_output, "MetaData"))
+
+				shutil.copy2(src = metaFile, 
+					dst = path.join(dir_output, 'MetaData', "{0}.xml".format(rnd)))
+			else:
+				print("MetaData file wasn't found at {}".format(path.join(dir_data_raw, rnd, 'MetaData', "{0}.xml".format(rnd))))
+		
+	print('Elapsed time ', time() - t0)
+
+else:
+	print("Skipping MIPing.")
+
 t1 = time()
-
-print('Elapsed time ', t1 - t0)
-
-
 
 position_list = [d for d in listdirectories(path.join(dir_output)) if d.startswith('FOV')]
 #Align
@@ -181,7 +184,8 @@ sys.stdout = open(reportFile, 'w') # redirecting the stdout to the log file
 
 partial_align = functools.partial(alignFOV, out_mother_dir=dir_output_aligned, round_list=rnd_list, 
 	mip_dir=dir_output, channel_DIC=channel_DIC, cycle_other=cycle_other, 
-	channel_DIC_other=channel_DIC_other, reference_cycle=reference_cycle)
+	channel_DIC_other=channel_DIC_other, reference_cycle=reference_cycle, 
+	maxIter=maxIter)
 
 with Pool(n_pool) as P:
 	list(P.map(partial_align, position_list))

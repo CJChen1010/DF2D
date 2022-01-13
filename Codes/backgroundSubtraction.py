@@ -3,8 +3,13 @@ import skimage.io as io
 from skimage.filters import threshold_otsu as otsu
 from matplotlib import pyplot as plt
 import yaml
+import argparse
 
-params = yaml.safe_load(open("./params.yaml", "r"))
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
+
 bgRounds = params['background_cycles']
 datadir = params['reg_dir']
 savedir = params['background_subt_dir']
