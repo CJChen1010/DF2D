@@ -89,7 +89,7 @@ class Segmentor2D:
         return toReturn
 
 
-def segment_cyto(self, cyto_imgs, diameters = 40, out_files = None, **kwargs):
+    def segment_cyto(self, cyto_imgs, diameters = 40, out_files = None, **kwargs):
         """ Takes a list of cytoplasmic stain, one or a list of average diameters 
         of cytoplasms in each image and runs Cellpose to segment the cytoplasm and returns masks in a list
         If diameter is None, run cellpose with automatic diameter detection and also returns estimated diameters

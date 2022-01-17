@@ -13,6 +13,7 @@ from starfish import IntensityTable
 
 from starfish.image import Filter
 from starfish.spots import DetectPixels
+from starfish.core.types import Levels
 
 from datetime import datetime
 from multiprocessing import Pool 	# Kian: added 210602
@@ -27,12 +28,11 @@ def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff =
 	# gauss_filt = Filter.GaussianLowPass(0.3, True)
 	gauss_imgs = imgs#gauss_filt.run(imgs)
 	
-	sc_filt = Filter.Clip(p_max=100, expand_dynamic_range=True)
+	sc_filt = Filter.Clip(p_min=0, p_max=100, level_method=Levels.SCALE_BY_CHUNK) # right now, it doesn't do anything
 	norm_imgs = sc_filt.run(gauss_imgs)
 
-	
 	if not normalize_max is None:
-		filtered_imgs = norm_imgs.apply(lambda x: 255 / normalize_max * np.clip(x, min_cutoff, normalize_max/255)) # 211019
+		norm_imgs = norm_imgs.apply(lambda x: 255 / normalize_max * np.clip(x, min_cutoff/255, normalize_max/255)) # 211019
 
 	z_filt = Filter.ZeroByChannelMagnitude(thresh=.05, normalize=binarize)
 	filtered_imgs = z_filt.run(norm_imgs)
@@ -54,22 +54,6 @@ def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff =
 	# area_threshold = (3, 45)
 	# how close, in euclidean space, should the pixel barcode be to the nearest barcode it was called to?
 	# here, I set this to be a large number, so I can inspect the distribution of decoded distances below
-	# distance_threshold = 3
-
-	# psd = DetectPixels.PixelSpotDecoder(
-		# codebook=codebook,
-		# metric='euclidean',
-		# distance_threshold=distance_threshold,
-		# magnitude_threshold=magnitude_threshold,
-		# min_area=area_threshold[0],
-		# max_area=area_threshold[1]
-	# )
-
-	# initial_spot_intensities, results = psd.run(filtered_imgs)
-	
-	# spots_df = initial_spot_intensities.to_features_dataframe()
-	# spots_df['area'] = np.pi*spots_df['radius']**2
-	# spots_df = spots_df.loc[spots_df[Features.PASSES_THRESHOLDS]]
 	
 	distance_threshold = 3
 	
@@ -93,25 +77,23 @@ def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff =
 	return pixel_traces_df, mags
 
 
-def process_experiment(experiment: starfish.Experiment, output_dir, magnitude_threshold, binarize, normalize_max = None, area_threshold = (1, 100)):
+def process_experiment(experiment: starfish.Experiment, output_dir, magnitude_threshold, binarize, normalize_max = None, 
+	area_threshold = (1, 100), min_cutoff=0):
 	''' if normalize_max not None, then all images are linearly normalize by normalize_max '''
 	decoded_intensities = {}
 	regions = {}
 	count = 0
 	df_pipe_partial = functools.partial(DARTFISH_pipeline, codebook=experiment.codebook, magnitude_threshold = magnitude_threshold, 
-			binarize=binarize, normalize_max = normalize_max, area_threshold = area_threshold)
+			binarize=binarize, normalize_max = normalize_max, area_threshold = area_threshold, min_cutoff=min_cutoff)
 
 	# fovs = [fov for (name_, fov) in experiment.items()]
 	# names = [name_ for (name_, fov) in experiment.items()]
 	names, fovs = zip(*experiment.items())
 	with Pool(dc_npool) as p:
 		traces_dfs, mags = zip(*p.map(df_pipe_partial, list(fovs)))
+		print()
 	# print(traces_dfs)
-	# for i, (name_, fov) in enumerate(experiment.items()):
-	# 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Started Processing FOV {:02d} with Barcode Magnitude threshold {}'.format(count,magnitude_threshold)))
-	# 	df_pipe_partial = functools.partial(DARTFISH_pipeline, codebook=expriment.codebook, magnitude_threshold = magnitude_threshold, 
-	# 		binarize=binarize)
-	# 	pixel_traces_df, mags = DARTFISH_pipeline(fov, experiment.codebook, magnitude_threshold, binarize)
+	
 	for name, trace in zip(names, traces_dfs):
 		newName = "FOV" + name[4:]
 		trace.to_csv(os.path.join(output_dir,'starfish_table_bcmag_{0}_{1}'.format(magnitude_threshold,newName) + '.csv'))
@@ -129,41 +111,45 @@ params = yaml.safe_load(open(args.param_file, "r"))
 dc_npool = params['dc_npool']
 data_dir = params['starfish_dir']
 output_dir = params['dc_out']
-# if not os.path.exists(output_dir):
-# 	os.makedirs(output_dir)
-
-
+min_intensity = params['min_intensity']
 normalize_ceiling = params['max_intensity'] # set to None in order to not normalize the maximum of each image
 rolonyArea = params['rolony_area']
-
-currentTime = datetime.now() 
-reportFile = os.path.join(output_dir, currentTime.strftime("%Y-%d-%m_%H:%M_starfish.log"))
-sys.stdout = open(reportFile, 'x') # redirecting the stdout to the log file
-
+bcmag = params['bcmag']
+ifBinarize = params['dc_binarize']
 
 exp = Experiment.from_json(os.path.join(data_dir,"experiment.json"))
 
-for magnitude_threshold in [2.0]: #,1.7:
+for magnitude_threshold in [bcmag]:
 	output_path = output_dir + "_bcmag{}".format(magnitude_threshold)
 	if not os.path.exists(output_path):
 		os.makedirs(output_path)
+
+	currentTime = datetime.now() 
+	reportFile = os.path.join(output_path, currentTime.strftime("%Y-%d-%m_%H:%M_starfish.log"))
+	sys.stdout = open(reportFile, 'x') # redirecting the stdout to the log file
+
 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Started Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
 	sys.stdout.flush()
-	process_experiment(exp, output_path, magnitude_threshold,binarize=True, min_cutoff = min_intensity, 
+	process_experiment(exp, output_path, magnitude_threshold,binarize=ifBinarize, min_cutoff = min_intensity, 
 						normalize_max = normalize_ceiling, area_threshold = rolonyArea)
 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Finished Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
 	sys.stdout.flush()
 
-magnitude_thresholds = [0.9]#[0.1,0.2,0.4,0.5,0.6,0.7,0.8,0.9]
-for magnitude_threshold in magnitude_thresholds:
-	output_path = output_dir + "_bcmag{}".format(magnitude_threshold)
-	if not os.path.exists(output_path):
-		os.makedirs(output_path)
-	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Started Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
-	sys.stdout.flush()
-	process_experiment(exp, output_path, magnitude_threshold,binarize=False, min_cutoff = min_intensity, 
-						normalize_max = normalize_ceiling, area_threshold = rolonyArea)
-	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Finished Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
-	sys.stdout.flush()
+# for magnitude_threshold in [2.0]: #,1.7: #[0.1,0.2,0.4,0.5,0.6,0.7,0.8,0.9]
+# 	output_path = output_dir + "_bcmag{}".format(magnitude_threshold)
+# 	if not os.path.exists(output_path):
+# 		os.makedirs(output_path)
+
+# 	currentTime = datetime.now() 
+# 	reportFile = os.path.join(output_path, currentTime.strftime("%Y-%d-%m_%H:%M_starfish.log"))
+# 	sys.stdout = open(reportFile, 'x') # redirecting the stdout to the log file
+
+# 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Started Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
+# 	sys.stdout.flush()
+# 	process_experiment(exp, output_path, magnitude_threshold,binarize=True, min_cutoff = min_intensity, 
+# 						normalize_max = normalize_ceiling, area_threshold = rolonyArea)
+# 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Finished Processing Experiment with Barcode Magnitude threshold ' + str(magnitude_threshold)))
+# 	sys.stdout.flush()
+
 
 sys.stdout = sys.__stdout__ # restoring the stdout pipe to normal	

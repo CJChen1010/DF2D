@@ -18,7 +18,7 @@ from starfish.experiment.builder import write_experiment_json
 from starfish.types import Axes, Coordinates, Features, Number
 #from starfish.util.argparse import FsExistsType
 from shutil import copy2
-from code_lib.utils import getMetaData
+from utils import getMetaData
 import yaml
 
 class DARTFISHTile(FetchedTile):

@@ -6,6 +6,7 @@ from skimage.io import imread
 import matplotlib.collections as col
 import yaml
 import argparse
+from utils import getMetaData
 
 def normalize(im, ceil, amin=0):
     return (np.clip(im / ceil * 255, a_min = amin, a_max = 255)).astype(np.uint8)
@@ -14,6 +15,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
 args = parser.parse_args()
 params = yaml.safe_load(open(args.param_file, "r"))
+
+cellbygeneAddr = os.path.join(params['seg_dir'], 'cell-by-gene{}.tsv'.format(params['seg_suf']))
 
 savingdir = params['qc_dir']
 
@@ -24,7 +27,8 @@ if params['background_subtraction']:
 else:
     img_dir = params['reg_dir']
 
-spot_addr = os.path.join(params['dc_out'] + '_' + params['bcmag'], 'all_spots_filtered.tsv')
+spot_addr = os.path.join(params['seg_dir'], 'spots_assigned{}.tsv'.format(params['seg_suf']))
+cellbygeneAddr = os.path.join(params['seg_dir'], 'cell-by-gene{}.tsv'.format(params['seg_suf']))
 
 max_int = params['max_intensity'] # normalizing the image to this maximum
 min_int = params['min_intensity']
@@ -39,7 +43,6 @@ if not os.path.isdir(rolonyPlotDir):
 
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
-
 
 # running blob detection on all FOVs
 n_blobs = []
@@ -57,12 +60,12 @@ for fov in fovs:
 
 # plotting decoded rolonies vs. anchor blobs
 n_rols, n_blobs = np.array(n_rols), np.array(n_blobs)
-p = np.polyfit(n_rols, y = n_blobs, deg=1 )
-plt.plot([0, np.max(n_rols)], [0, np.max(n_rols)], c = 'green', alpha = 0.5, label = 'x=y line')
-plt.plot([0, np.max(n_rols)], np.polyval(p, [0, np.max(n_rols)]), c = 'orange', alpha = 0.5, label = 'fitted line')
-plt.scatter(n_rols, n_blobs, alpha =0.7)
-plt.xlabel("#decoded rolonies")
-plt.ylabel("#anchor blobs")
+p = np.polyfit(n_blobs, y = n_rols, deg=1 )
+plt.plot([0, np.max(n_blobs)], [0, np.max(n_blobs)], c = 'green', alpha = 0.5, label = 'x=y line')
+plt.plot([0, np.max(n_blobs)], np.polyval(p, [0, np.max(n_blobs)]), c = 'orange', alpha = 0.5, label = 'fitted line')
+plt.scatter(n_blobs, n_rols, alpha =0.7)
+plt.ylabel("#decoded rolonies")
+plt.xlabel("#anchor blobs")
 plt.legend()
 plt.savefig(os.path.join(savingdir, "decoded_rolonies-v-anchor_blobs.pdf"))
 
@@ -111,7 +114,7 @@ for i, fov in enumerate(fovs):
     
     plt.tight_layout()
     fig.savefig(os.path.join(rolonyPlotDir, "{}.png".format(fov)))
-
+    plt.close()
 
 
 """ Rolony Stats """
@@ -121,10 +124,7 @@ def getHistHeight(histOut, x):
     h = n[bar_n]
     return h
 
-cellbygene = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene'], as_index = False).size()
-cellbygene = cellbygene.reset_index().pivot(index = 'cell_label', columns = 'gene', values = 'size').fillna(0).astype(int)
-
-
+cellbygene = pd.read_csv(cellbygeneAddr, sep = "\t", index_col=0)
 n_cells = cellbygene.index[-1]
 countpercell = cellbygene.sum(axis=1)
 gene_per_nuc = (cellbygene > 0).sum(axis=1)
@@ -144,19 +144,26 @@ ax[0].legend()
 
 
 bins = np.arange(1, max_x_rols, 1)
-count_cum = [np.sum(countpercell >= i) for i in bins] / n_cells
+count_cum = [np.sum(countpercell >= i) / n_cells for i in bins]
 bins = np.append(0, bins) # have to append 0 and 1 since cells with no rolony are not in the count matrix
 count_cum = np.append(1, count_cum)
 
 ax[1].bar(bins, 100 * count_cum, width = 1, alpha = 0.8)
 ax[1].set_yscale('log')
 ax[1].set_xticks(np.arange(0, bins[-1], step = 10))
-ax[1].vlines(x = bins[5], ymin = 0, ymax= 100 * count_cum[5], 
-             colors = 'red', linestyles='dashed', 
-             label = 'at least 5 rolonies')
-ax[1].vlines(x = bins[20], ymin = 0, ymax= 100 * count_cum[20], 
-             colors = 'orange', linestyles='dashed', 
-             label = 'at least 20 rolonies')
+try:
+    ax[1].vlines(x = bins[5], ymin = 0, ymax= 100 * count_cum[5], 
+                 colors = 'red', linestyles='dashed', 
+                 label = 'at least 5 rolonies')
+except: 
+    pass
+
+try:
+    ax[1].vlines(x = bins[20], ymin = 0, ymax= 100 * count_cum[20], 
+                 colors = 'orange', linestyles='dashed', 
+                 label = 'at least 20 rolonies')
+except:
+    pass
 ax[1].set_title('Cumulative rolony count per nucleus')
 ax[1].set_ylabel('% cells')
 ax[1].set_xlabel('At least #rolony per cell')
@@ -164,7 +171,7 @@ ax[1].legend()
 
 """ Genes per cell"""
 bins = np.arange(1, max_x_genes, 1)
-gene_cum = [np.sum(gene_per_nuc >= i) for i in bins] / n_cells
+gene_cum = [np.sum(gene_per_nuc >= i) / n_cells for i in bins] 
 bins = np.append(0, bins)
 gene_cum = np.append(1, gene_cum)
 
@@ -178,25 +185,81 @@ ax[2].legend()
 ax[3].bar(bins, 100 * gene_cum, width = 1, alpha = 0.8)
 ax[3].set_yscale('log')
 ax[3].set_xticks(np.arange(0, bins[-1], 5))
-ax[3].vlines(x = bins[5], ymin = 0, ymax= 100 * gene_cum[5], 
-             colors = 'red', linestyles='dashed', 
-             label = 'at least 5 genes')
-ax[3].vlines(x = bins[20], ymin = 0, ymax= 100 * gene_cum[20], 
-             colors = 'orange', linestyles='dashed', 
-             label = 'at least 20 genes')
+try:
+    ax[3].vlines(x = bins[5], ymin = 0, ymax= 100 * gene_cum[5], 
+                 colors = 'red', linestyles='dashed', 
+                 label = 'at least 5 genes')
+except:
+    pass
+
+try:
+    ax[3].vlines(x = bins[20], ymin = 0, ymax= 100 * gene_cum[20], 
+                 colors = 'orange', linestyles='dashed', 
+                 label = 'at least 20 genes')
+except:
+    pass
 
 ax[3].set_title('Cumulative #genes count per nucleus')
 ax[3].set_ylabel('%cells')
 ax[3].set_xlabel('at least #gene per cell')
 ax[3].legend()
 
-
 plt.tight_layout()
 plt.savefig(os.path.join(savingdir, 'rolony_stats.png'), dpi=200)
 
 
+
+# cell size and radius histogram
+cellInfo_df = pd.read_csv(os.path.join(params['seg_dir'], 'cell_info{}.tsv'.format(params['seg_suf'])), sep = "\t")
+
+metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+_, vox, _ = getMetaData(metadataFile)
+
+areaInPix = cellInfo_df['area']
+diamInPix = np.sqrt(4 * areaInPix / np.pi)
+
+areaInMicron = areaInPix * vox['2'] * vox['1']
+diamInMicron = diamInPix * vox['1']
+
+fig, axes = plt.subplots(ncols=2, nrows = 2, figsize = (15, 12))
+
+axes = axes.ravel()
+axes[0].hist(areaInPix)
+axes[0].set_title("Cell Area (#pixels) Histogram")
+
+axes[1].hist(areaInMicron)
+axes[1].set_title("Cell Area (um^2) Histogram")
+
+axes[2].hist(diamInPix)
+axes[2].set_title("Cell Diameter (#pixels) Histogram")
+
+axes[3].hist(diamInMicron)
+axes[3].set_title("Cell Diameter (um) Histogram")
+
+plt.tight_layout()
+fig.savefig(os.path.join(savingdir, 'cell_size_stats.png'), dpi=200)
+
+
 # distance to cell histogram
 plt.figure(figsize = (8, 6))
-plt.hist(spots['dist2cell'], bins = 50)
-plt.title("Distance to nearest cell")
+plt.hist(spot_df['dist2cell'] * vox['1'], bins = 100)
+plt.title("Distance to nearest cell histogram")
+plt.xlabel("distance (um)")
+plt.yscale("log")
+plt.tight_layout()
 plt.savefig(os.path.join(savingdir, 'dist2cell_hist.png'), dpi=200)
+
+
+
+# Empty rate per FOV
+spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
+countPerFov = pd.crosstab(spot_df['gene'], spot_df['fov'])
+
+plt.figure(figsize = (10 * len(countPerFov.columns) / 100, 6))
+plt.bar(countPerFov.columns, countPerFov.loc['Empty'] / countPerFov.sum(axis=0))
+_=plt.xticks(rotation=90, fontsize = 6)
+plt.title("Empty rate per FOV")
+plt.xlabel("FOV")
+plt.ylabel("Empty rate")
+plt.tight_layout()
+plt.savefig(os.path.join(savingdir, 'EmptyRatePerFOV.png'), dpi=200)

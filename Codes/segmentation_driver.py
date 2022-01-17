@@ -1,7 +1,7 @@
 import os
 from os import path
-from code_lib.Segmentation_210913 import Segmentor2D
-from code_lib.Assignment_201020 import *
+from Segmentation import Segmentor2D
+from Assignment import *
 from skimage.io import imread
 import numpy as np, pandas as pd
 import multiprocessing
@@ -11,6 +11,7 @@ import yaml
 import argparse
 
 def mask2centroid(maskImg, ncore = 8):
+    """ Finding centroids and area of segmented cells from a mask image """
     # ranges = np.split(np.arange(1, maskImg.max() + 1), ncore)
     ranges = np.split(np.arange(1, maskImg.max() + 1), np.linspace(1, maskImg.max() + 1, ncore+2).astype(int)[1:-1])
 
@@ -24,7 +25,8 @@ def mask2centroid_parallel(rng, mimg):
     for i in rng:
         xs, ys = np.where(mimg == i)
         xc, yc = xs.mean().astype(int), ys.mean().astype(int)
-        cent.append((xc, yc))    
+        area = len(xs)
+        cent.append((xc, yc, area))    
     return np.array(cent)
     
 parser = argparse.ArgumentParser()
@@ -48,25 +50,29 @@ if not path.exists(saving_path):
 
 suff = params['seg_suf']
 
-bcmag = params['bcmag']
+bcmag = "bcmag{}".format(params['bcmag'])
     
 spot_file = os.path.join(params['dc_out'] + '_' + bcmag, 'all_spots_filtered.tsv')
 
-
 # segmenting the nuclear image
-diam = params['seg_diam']
-segmentor = Segmentor2D()
+if params['skip_seg']:
+    mask = np.load(path.join(saving_path, 'segmentation_mask{}.npy'.format(suff)))
+else:
+    print('{} segmentation started.'.format(params['segmentation_type']))
+    diam = params['seg_diam']
+    segmentor = Segmentor2D()
 
-if params['segmentation_type'] == 'nuc':
-    mask = segmentor.segment_nuclei([nuc_img], diameters = diam, 
-                         out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
-elif params['segmentation_type'] == 'cyto':
-    mask = segmentor.segment_cyto([cyto_img], diameters = diam, 
-                         out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
-elif params['segmentation_type'] == 'cyto+nuc':
-    mask = segmentor.segment_cyto_nuc([nuc_img], [cyto_img], diameters = diam, 
-                         out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
-
+    if params['segmentation_type'] == 'nuc':
+        mask = segmentor.segment_nuclei([nuc_img], diameters = diam, 
+                             out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
+    elif params['segmentation_type'] == 'cyto':
+        mask = segmentor.segment_cyto([cyto_img], diameters = diam, 
+                             out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
+    elif params['segmentation_type'] == 'cyto+nuc':
+        mask = segmentor.segment_cyto_nuc([nuc_img], [cyto_img], diameters = diam, 
+                             out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
+    print("Segmentation done.")
+    
 # plot segmentation mask
 myCmap = np.random.rand(np.max(mask) + 1, 4)
 myCmap[:, -1] = 1
@@ -99,25 +105,27 @@ fig.savefig(path.join(saving_path, 'assigned_rolonies{}.png'.format(suff)),
 print("plotting assigned rolonies done")
 
 
-# finding the cells centroids
-centroids = mask2centroid(mask, ncore = params['centroid_npool'])
+# finding the cells cell information: centroid and area
+cellInfos = mask2centroid(mask, ncore = params['centroid_npool'])
 centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1), 
-                            'centroid_x' : centroids[:, 0], 'centroid_y' : centroids[:, 1]})
-centroid_df.to_csv(path.join(saving_path, 'cell_locations{}.tsv'.format(suff)), sep = '\t', index = False)
+                            'centroid_x' : cellInfos[:, 0], 'centroid_y' : cellInfos[:, 1],
+                            'area' : cellInfos[:, 2]})
+centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
 
 # plotting the cells with their label
 fig = plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
 ax = fig.gca()
 ax.imshow(nuc_img, cmap='gray')
-ax.scatter(centroids[:, 1], centroids[:, 0], s = 1, c='red')
-for i in range(centroids.shape[0]):
-    ax.text(centroids[i, 1], centroids[i, 0], str(i), fontsize = 5, c = 'orange')
+ax.scatter(cellInfos[:, 1], cellInfos[:, 0], s = 1, c='red')
+for i in range(cellInfos.shape[0]):
+    ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 5, c = 'orange')
 fig.savefig(path.join(saving_path, 'cell_map{}.png'.format(suff)),
             transparent = True, dpi = 400, bbox_inches='tight')
 
 # Making the cell by gene matrix
 spot_df = spot_df.loc[spot_df['dist2cell'] <= params['max_rol2nuc_dist']] # filtering rolonies based on distance to cell
-nuc_gene_df = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene'], as_index = False).size()
-nuc_gene_df = nuc_gene_df.reset_index().pivot(index = 'cell_label', columns = 'gene', values = 'size').fillna(0).astype(int)
+nuc_gene_df = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene']).size()
+nuc_gene_df = nuc_gene_df.reset_index().pivot(index = 'cell_label', columns = 'gene').fillna(0).astype(int)
+nuc_gene_df.columns = nuc_gene_df.columns.droplevel()
 nuc_gene_df.to_csv(path.join(saving_path, 'cell-by-gene{}.tsv'.format(suff)), sep = '\t')
 

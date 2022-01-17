@@ -1,8 +1,8 @@
-import os, re, code_lib.IJ_stitch_201020 as IJS
+import os, re, IJ_stitch_201020 as IJS
 import shutil, sys
 from datetime import datetime
 import pandas as pd, numpy as np
-from code_lib.utils import getTileLocs
+from utils import getTileLocs
 import yaml
 import argparse 
 
