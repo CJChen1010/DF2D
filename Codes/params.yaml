@@ -165,7 +165,7 @@
  seg_suf: "_N9"
  
  # whether to skip the segmentation. For troubleshooting
- skip_seg: true
+ skip_seg: false
 
  # number of cores for finding centroids
  centroid_npool: 8
