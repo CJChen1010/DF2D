@@ -9,7 +9,7 @@ import scipy.ndimage as ndimage
 from multiprocessing import Pool 	# Kian: added 210323
 import functools	# Kian: added 210323
 import yaml	# Kian: added 220111
-from code_lib.utils import getMetaData # Kian: added 220111
+from utils import getMetaData # Kian: added 220111
 import argparse
 from scipy.ndimage import median_filter
 
