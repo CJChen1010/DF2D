@@ -6,7 +6,7 @@
 import os, re, numpy as np, pandas as pd
 from scipy.spatial import cKDTree
 from matplotlib import pyplot as plt
-from code_lib.utils import getMetaData
+from utils import getMetaData
 import yaml
 import argparse
 
@@ -38,8 +38,9 @@ def filterByEmptyFraction(spot_df, cutoff):
     spot_df['isEmpty'] = spot_df['target'].str.startswith('Empty')
     spot_df['cum_empty'] = spot_df['isEmpty'].cumsum()
     spot_df['cum_empty_frac'] = spot_df['cum_empty'] / np.arange(1, spot_df.shape[0] + 1)
-    spot_df_trimmed = spot_df.loc[spot_df['cum_empty_frac'] <= cutoff]
-    spot_df_highDist = spot_df.loc[spot_df['cum_empty_frac'] > cutoff]
+    cut_ind = np.where(spot_df['cum_empty_frac'] <= cutoff)[0][-1]
+    spot_df_trimmed = spot_df.iloc[:cut_ind]
+    spot_df_highDist = spot_df.iloc[cut_ind:]
     return spot_df_trimmed, spot_df_highDist, spot_df
 
 
@@ -79,7 +80,7 @@ args = parser.parse_args()
 params = yaml.safe_load(open(args.param_file, "r"))
 
 decoding_dir = params['dc_out'] # the main directory for decoding 
-bcmags = ["bcmag0.9", "bcmag2.0"]
+bcmags = ["bcmag{}".format(params['bcmag'])]
 
 metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
 npix, vox, number_of_fovs = getMetaData(metadataFile)
@@ -106,8 +107,13 @@ for bcmag in bcmags:
     removed_spots = removed_spots.loc[removed_spots['gene'] != 'Empty']
     removed_spots.reset_index(drop = True).to_csv(os.path.join(savingpath, 'all_removed_spots.tsv'), sep = '\t')
 
-    plt.figure()
-    plt.plot(overlapFree_spots['distance'], overlapFree_spots['cum_empty_frac'], '*')
-    plt.xlabel("barcode distance")
-    plt.ylabel("empty fraction")
+    fig, axes = plt.subplots(ncols = 2, figsize = (10, 6))
+    axes[0].plot(np.arange(0, overlapFree_spots.shape[0]), overlapFree_spots['cum_empty_frac'])
+    axes[0].set_xlabel("spot index")
+    axes[0].set_ylabel("empty fraction")
+
+    axes[1].plot(np.arange(0, overlapFree_spots.shape[0]), overlapFree_spots['distance'])
+    axes[1].set_xlabel("spot number")
+    axes[1].set_ylabel("barcode distance")
+    plt.tight_layout()
     plt.savefig(os.path.join(savingpath, 'distance_emptyRate_plot.png'))

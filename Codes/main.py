@@ -3,17 +3,26 @@ import shutil, sys
 from datetime import datetime
 import yaml
 import subprocess as sp
+import argparse
 
-param_file = "params.yaml"
-params = yaml.safe_load(open(param_file, "r"))    
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file')
+args = parser.parse_args()
+params = yaml.safe_load(open(args.param_file, "r"))
+
+# param_file = "params.yaml"
+# params = yaml.safe_load(open(param_file, "r"))    
+# print(params)
 
 """ Running image registration"""
 align_shell = [sys.executable, "AlignerDriver.py", param_file]
 print(align_shell)
 commandOut = sp.run(align_shell, stderr = sp.PIPE, text = True)
 
-if commandOut.stderr != '':
-    print(commandOut.stderr)
+print(commandOut.stderr)
+
+if commandOut.returncode:
+    print("Error in image registration.")
     sys.exit(1)
 
 """ Running background subtraction (optional)"""
@@ -35,8 +44,7 @@ commandOut = sp.run(stitch_shell, stderr = sp.PIPE, text = True)
 
 print(commandOut.stderr)
 if commandOut.returncode:
-    print("Error in stitching")
-    print(commandOut.stderr)
+    print("Error in stitching.")
     sys.exit(1)
 
 """ to StarFish format"""
@@ -47,11 +55,10 @@ commandOut = sp.run(tosff_shell, stderr = sp.PIPE, text = True)
 print(commandOut.stderr)
 
 if commandOut.returncode:
-    print("Error in toStarfishFormat:")
-    print(commandOut.stderr)
+    print("Error in toStarfishFormat.")
     sys.exit(1)
 
-# """ Run Starfish decoding"""
+""" Run Starfish decoding"""
 dc_shell = [sys.executable, "starfishDARTFISHpipeline.py", param_file]
 print(dc_shell)
 commandOut = sp.run(dc_shell, stderr = sp.PIPE, text = True)
@@ -60,8 +67,38 @@ commandOut = sp.run(dc_shell, stderr = sp.PIPE, text = True)
 print(commandOut.stderr)
 
 if commandOut.returncode:
-    print("Error in Starfish decoding:")
-    print(commandOut.stderr)
+    print("Error in Starfish decoding.")
+    sys.exit(1)
+
+""" Combinding FOVs"""
+comb_shell = [sys.executable, "CombineFOVs.py", param_file]
+print(comb_shell)
+commandOut = sp.run(comb_shell, stderr = sp.PIPE, text = True)
+
+
+print(commandOut.stderr)
+
+if commandOut.returncode:
+    print("Error in combining FOVs.")
+    sys.exit(1)
+
+""" Running segmentation and assignment"""
+seg_shell = [sys.executable, "segmentation_driver.py", param_file]
+print(seg_shell)
+commandOut = sp.run(seg_shell, stderr = sp.PIPE, text = True)
+
+print(commandOut.stderr)
+if commandOut.returncode:
+    print("Error in segmentation/assignment")
     sys.exit(1)
 
 
+""" Running QC plots """
+qc_shell = [sys.executable, "QC_plots.py", param_file]
+print(qc_shell)
+commandOut = sp.run(qc_shell, stderr = sp.PIPE, text = True)
+
+print(commandOut.stderr)
+if commandOut.returncode:
+    print("Error in QC plots.")
+    sys.exit(1)    

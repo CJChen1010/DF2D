@@ -13,10 +13,13 @@
  reg_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "4_Empty", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
 
  # number of iterations for registration
- reg_maxIter: 50
+ reg_maxIter: 400
 
- # sigma value for initial gaussian blurring
- sigma: 0.2
+ # pre-mipping smoothing method. Either "gaussian" or "median"
+ smooth_method: "gaussian" # median
+
+ # sigma if smooth_method=="gaussian", window size if smooth_method=="median"
+ smooth_degree: 0.2 # 3
 
  # reference cycle for registration 
  ref_reg_cycle: "5_dc3" 
@@ -71,7 +74,7 @@
  stchFilePattern: "(?P<intro>MIP)_(?P<rndName>\\d+_\\S+)?_(?P<fov>FOV\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: ch
  
  # the regex pattern for fov names
- fov_pat: "(FOV)\\d+" # pattern to extract the fov# 
+ fov_pat: "FOV(\\d+)" # pattern to extract the fov# 
 
 
 
@@ -105,17 +108,23 @@
  # where decoding results will be stored + prefix
  dc_out: "../3_Decoded/output_Starfish"
 
+ # barcode magnitude to use
+ bcmag: 0.6
+
+ # binarize in Starfish decoding 
+ dc_binarize: false
+
  # intensities are scaled such that values higher than this are set to 255. Set to null for no normalization
- max_intensity: 100
+ max_intensity: 30
 
  # intensities below this value are set to 0
- min_intensity: 0
+ min_intensity: 1
 
  # valid area range for rolonies
  rolony_area: [2, 100]
 
  # number of pools for decoding
- dc_npool: 5
+ dc_npool: 6
 
 
 
@@ -138,10 +147,10 @@
  segmentation_type: "nuc"
 
  # the round name that contains nuclear stain. Doesn't matter if segmentation_type == 'cyto'
- nuc_rnd : "9_DRAQ5" 
+ nuc_rnd : "0_anchor" 
 
  # channel for nuclear stain in `nuc_rnd`. Doesn't matter if segmentation_type == 'cyto'
- nuc_ch: "ch00"
+ nuc_ch: "ch03"
 
  # the round name that contains cytoplasmic stain. Doesn't matter if segmentation_type == 'nuc'
  cyto_rnd : "0_anchor"
@@ -149,15 +158,15 @@
  # channel for cyto stain in `cyto_rnd`. Doesn't matter if segmentation_type == 'nuc'
  cyto_ch: "ch02"
 
- # barcode magnitude to use
- bcmag: "bcmag0.9"
-
  # average diameter of cells (for "cyto" and "nuc+cyto") or nuclei (for "nuc") in pixels
- seg_diam: 30
+ seg_diam: 40
 
  # suffix for generated files. Could be "".
- seg_suf: "_DRAQ5"
+ seg_suf: "_N9"
  
+ # whether to skip the segmentation. For troubleshooting
+ skip_seg: true
+
  # number of cores for finding centroids
  centroid_npool: 8
 
