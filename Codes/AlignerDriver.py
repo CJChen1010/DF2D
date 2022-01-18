@@ -4,7 +4,7 @@ from datetime import datetime
 import TwoDimensionalAligner_2 as myAligner # Kian: added 201011
 from os import chdir, listdir, getcwd, path, makedirs, remove,  walk
 import numpy as np
-from skimage.io import imread
+from matplotlib import pyplot as plt 
 import scipy.ndimage as ndimage
 from multiprocessing import Pool 	# Kian: added 210323
 import functools	# Kian: added 210323
@@ -49,10 +49,10 @@ def tile_filter_mip(fov, rnd, dir_root, dir_output='./MIP_gauss', method='gaussi
 	image_list = [None]*nImages
 	if method == 'gaussian':
 		for i in range(len(image_names)):
-			image_list[i] = (ndimage.gaussian_filter(imread(image_names[i]), sigma=sigmaOrWidth))
+			image_list[i] = (ndimage.gaussian_filter(plt.imread(image_names[i]), sigma=sigmaOrWidth))
 	elif method == 'median':
 		for i in range(len(image_names)):
-			image_list[i] = (median_filter(imread(image_names[i]), size=sigmaOrWidth))
+			image_list[i] = (median_filter(plt.imread(image_names[i]), size=sigmaOrWidth))
 
 	# change directory back to original
 	chdir(current_dir)
