@@ -32,11 +32,11 @@ if params['background_subtraction']:
     print(subt_shell)
     commandOut = sp.run(subt_shell, stderr = sp.PIPE, text = True)
  
-print(commandOut.stderr)
+    print(commandOut.stderr)
 
-if commandOut.returncode:
-    print("Error in background subtraction:")
-    sys.exit(1)
+    if commandOut.returncode:
+        print("Error in background subtraction:")
+        sys.exit(1)
     
 """ Running stitching"""
 stitch_shell = [sys.executable, "StitchDriver.py", param_file]
