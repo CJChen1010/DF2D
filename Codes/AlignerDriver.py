@@ -4,7 +4,7 @@ from datetime import datetime
 import TwoDimensionalAligner_2 as myAligner # Kian: added 201011
 from os import chdir, listdir, getcwd, path, makedirs, remove,  walk
 import numpy as np
-from skimage.io import imread, imsave
+from skimage.io import imread
 import scipy.ndimage as ndimage
 from multiprocessing import Pool 	# Kian: added 210323
 import functools	# Kian: added 210323
@@ -12,6 +12,7 @@ import yaml	# Kian: added 220111
 from utils import getMetaData # Kian: added 220111
 import argparse
 from scipy.ndimage import median_filter
+from tifffile import imsave
 
 def listdirectories(directory='.', pattern = '*'):	# Kian: added 201011
 	'''
