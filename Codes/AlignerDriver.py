@@ -137,7 +137,8 @@ reference_cycle = params['ref_reg_cycle'] # Which cycle to align to
 channel_DIC_reference = params['ref_reg_ch'] # DIC channel for reference cycle
 channel_DIC = channel_DIC_reference # DIC channel for (non-reference) decoding cycles (the channel we use for finding alignment parameters)
 cycle_other = list(params['cycle_other']) # if there are other data-containing folders which need to be aligned but are not names "CycleXX"
-channel_DIC_other = params['cycle_other'] # DIC channel for otPher data-containing folders
+channel_DIC_other = params['cycle_other'] # DIC channel for other data-containing folders
+twoChRnds = params['twoChannelRounds'] if not params['twoChannelRounds'] is None else []
 
 #Number of FOVs
 metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
@@ -151,7 +152,7 @@ t0 = time()
 if not params['skip_mip']:
 	#MIP
 	for rnd in rnd_list:
-		if ("DRAQ5" in rnd):
+		if (rnd in twoChRnds):
 			channel_list = [0, 1]
 		else:
 			channel_list = [0, 1, 2, 3]

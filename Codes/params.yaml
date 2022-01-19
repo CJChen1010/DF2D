@@ -36,7 +36,11 @@
  # Skip maximum intensity projection (for troubleshooting)
  skip_mip: false
 
+ # two channel rounds: list of rounds that only have ch00 and ch01
+ twoChannelRounds: null # ["9_DRAQ5"]
 
+
+ 
 
  ######## Background subtraction paramteres ########
  # if there is a background cycle to subtract from all other cycles
