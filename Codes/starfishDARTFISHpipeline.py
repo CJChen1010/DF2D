@@ -20,6 +20,7 @@ from multiprocessing import Pool 	# Kian: added 210602
 import functools	# Kian: added 210602
 import yaml
 import argparse
+from utils import getMetaData
 
 def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff = 0, normalize_max = None, area_threshold = (1, 100)):
 	''' if normalize_max not None, then all images are linearly normalize by normalize_max '''
@@ -95,13 +96,17 @@ def process_experiment(experiment: starfish.Experiment, output_dir, magnitude_th
 	# print(traces_dfs)
 	
 	for name, trace in zip(names, traces_dfs):
-		newName = "FOV" + name[4:]
+		newName = "FOV{}".format(format_fov(int(name[4:])))
 		trace.to_csv(os.path.join(output_dir,'starfish_table_bcmag_{0}_{1}'.format(magnitude_threshold,newName) + '.csv'))
 	# 	print(datetime.now().strftime('%Y-%d-%m_%H:%M:%S: Finished Processing FOV {:02d} with Barcode Magnitude threshold {}'.format(count,magnitude_threshold)))
 	# 	count += 1
 		#decoded_intensities[name_] = decoded
 		#regions[name_] = segmentation_results
 #	return decoded_intensities, regions
+
+def format_fov(fovnum):
+	n_dig = len(str(number_of_fovs))
+	return str(fovnum).zfill(n_dig)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
@@ -116,6 +121,9 @@ normalize_ceiling = params['max_intensity'] # set to None in order to not normal
 rolonyArea = params['rolony_area']
 bcmag = params['bcmag']
 ifBinarize = params['dc_binarize']
+
+metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+_, _, number_of_fovs = getMetaData(metadataFile)
 
 exp = Experiment.from_json(os.path.join(data_dir,"experiment.json"))
 
