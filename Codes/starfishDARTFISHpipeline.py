@@ -122,7 +122,11 @@ rolonyArea = params['rolony_area']
 bcmag = params['bcmag']
 ifBinarize = params['dc_binarize']
 
-metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+if params['metadata_file'] is None:
+	metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+else:
+	metadataFile = params['metadata_file']
+
 _, _, number_of_fovs = getMetaData(metadataFile)
 
 exp = Experiment.from_json(os.path.join(data_dir,"experiment.json"))

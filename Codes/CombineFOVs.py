@@ -82,7 +82,11 @@ params = yaml.safe_load(open(args.param_file, "r"))
 decoding_dir = params['dc_out'] # the main directory for decoding 
 bcmags = ["bcmag{}".format(params['bcmag'])]
 
-metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+if params['metadata_file'] is None:
+    metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+else:
+    metadataFile = params['metadata_file']
+    
 npix, vox, number_of_fovs = getMetaData(metadataFile)
 
 VOXEL = {"Y":vox['2'], "X":vox['1'], "Z":vox['3']}

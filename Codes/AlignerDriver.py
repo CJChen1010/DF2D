@@ -141,7 +141,11 @@ channel_DIC_other = params['cycle_other'] # DIC channel for other data-containin
 twoChRnds = params['twoChannelRounds'] if not params['twoChannelRounds'] is None else []
 
 #Number of FOVs
-metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+if params['metadata_file'] is None:
+	metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+else:
+	metadataFile = params['metadata_file']
+
 _, _, n_fovs = getMetaData(metadataFile)
 
 n_pool = params['reg_npool']

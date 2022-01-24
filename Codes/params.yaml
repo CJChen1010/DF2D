@@ -12,6 +12,12 @@
  # list of all rounds to be registered
  reg_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "4_Empty", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
 
+ # reference cycle for registration 
+ ref_reg_cycle: "5_dc3" 
+
+ # where the microscope metadata is. Set to null if metadata is here: dir_data_raw/ref_reg_cycle/MetaData/ref_reg_cycle.xml
+ metadata_file: null
+
  # number of iterations for registration
  reg_maxIter: 400
 
@@ -20,9 +26,6 @@
 
  # sigma if smooth_method=="gaussian", window size if smooth_method=="median"
  smooth_degree: 0.2 # 3
-
- # reference cycle for registration 
- ref_reg_cycle: "5_dc3" 
 
  # channel for registration on all cycles except those specified in `cycle_other`
  ref_reg_ch: "ch01" # DIC channel for reference cycle

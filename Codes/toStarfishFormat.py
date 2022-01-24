@@ -197,7 +197,11 @@ RND_LIST = params['dc_rounds']
 RND_ALIGNED = params['ref_reg_cycle']
 RND_DRAQ5 = params['stain_round']
 
-metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
+if params['metadata_file'] is None:
+	metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+else:
+	metadataFile = params['metadata_file']
+	
 npix, vox, number_of_fovs = getMetaData(metadataFile)
 
 SHAPE = {Axes.Y: npix['2'], Axes.X: npix['1']}

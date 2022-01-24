@@ -121,7 +121,11 @@ stitchRef = params['ref_reg_cycle'] if params['stitchRefCycle'] is None else par
 stitchChRef = params['ref_reg_ch'] if params['stitchChRef'] is None else params['stitchChRef'] # default reference channel for stitching
 
 """ Getting the nominal tile location of the reference round using the metadata file"""
-metadataFile = "../1_Projected/MetaData/{}.xml".format(params['ref_reg_cycle'])
+if params['metadata_file'] is None:
+    metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+else:
+    metadataFile = params['metadata_file']
+    
 tileLocs = getTileLocs(metadataFile)
 
 
