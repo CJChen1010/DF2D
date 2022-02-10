@@ -36,6 +36,8 @@ class Segmentor2D:
                 mask, _, _, diam = self.base_model.eval([img], channels = [0, 0])
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
                 estim_diams.append(diam)
             toReturn = initial_masks, estim_diams
         else:
@@ -45,6 +47,8 @@ class Segmentor2D:
                 mask, _, _, _ = self.base_model.eval([img], channels = [0, 0], diameter = diameters[i], **kwargs)
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
             toReturn = initial_masks
 
         if out_files is not None:
@@ -72,6 +76,8 @@ class Segmentor2D:
                 mask, _, _, diam = self.base_model.eval([img], channels = [1, 2])
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
                 estim_diams.append(diam)
             toReturn = initial_masks, estim_diams
         else:
@@ -81,6 +87,8 @@ class Segmentor2D:
                 mask, _, _, _ = self.base_model.eval([img], channels = [1, 2], diameter = diameters[i], **kwargs)
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
             toReturn = initial_masks
 
         if out_files is not None:
@@ -108,6 +116,8 @@ class Segmentor2D:
                 mask, _, _, diam = self.base_model.eval([img], channels = [0, 0])
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
                 estim_diams.append(diam)
             toReturn = initial_masks, estim_diams
         else:
@@ -117,6 +127,8 @@ class Segmentor2D:
                 mask, _, _, _ = self.base_model.eval([img], channels = [0, 0], diameter = diameters[i], **kwargs)
                 if mask[0].max() < 2**16 - 1:
                     initial_masks.append(mask[0].astype(np.uint16))
+                else:
+                    initial_masks.append(mask[0])
             toReturn = initial_masks
 
         if out_files is not None:
