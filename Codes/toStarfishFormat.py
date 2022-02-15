@@ -198,7 +198,7 @@ RND_ALIGNED = params['ref_reg_cycle']
 RND_DRAQ5 = params['stain_round']
 
 if params['metadata_file'] is None:
-	metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+	metadataFile = os.path.join(params['dir_data_raw'], RND_ALIGNED, 'MetaData', "{}.xml".format(reference_cycle))
 else:
 	metadataFile = params['metadata_file']
 	
