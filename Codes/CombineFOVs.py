@@ -83,7 +83,7 @@ decoding_dir = params['dc_out'] # the main directory for decoding
 bcmags = ["bcmag{}".format(params['bcmag'])]
 
 if params['metadata_file'] is None:
-    metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+    metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
 else:
     metadataFile = params['metadata_file']
     
