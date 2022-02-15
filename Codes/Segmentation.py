@@ -103,7 +103,7 @@ class Segmentor2D:
         If diameter is None, run cellpose with automatic diameter detection and also returns estimated diameters
         Optional: out_files is a list of addresses to save the masks. """
         print("Segmenting cells using both nuclear and cytoplasmic stain.")
-        if len(nuc_imgs[0].shape) == 3:
+        if len(cyto_imgs[0].shape) == 3:
             print("Images are 3D. TODO: 3D erosion")
             raise TypeError('3D image loaded instead of 2D')
         
