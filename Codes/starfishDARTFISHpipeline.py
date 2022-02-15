@@ -123,7 +123,7 @@ bcmag = params['bcmag']
 ifBinarize = params['dc_binarize']
 
 if params['metadata_file'] is None:
-	metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+	metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
 else:
 	metadataFile = params['metadata_file']
 
