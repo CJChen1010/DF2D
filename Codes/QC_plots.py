@@ -213,7 +213,7 @@ plt.savefig(os.path.join(savingdir, 'rolony_stats.png'), dpi=200)
 cellInfo_df = pd.read_csv(os.path.join(params['seg_dir'], 'cell_info{}.tsv'.format(params['seg_suf'])), sep = "\t")
 
 if params['metadata_file'] is None:
-    metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+    metadataFile = os.path.join(params['dir_data_raw'], params['ref_reg_cycle'], 'MetaData', "{}.xml".format(params['ref_reg_cycle']))
 else:
     metadataFile = params['metadata_file']
 
