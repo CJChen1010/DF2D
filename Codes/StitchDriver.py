@@ -122,7 +122,7 @@ stitchChRef = params['ref_reg_ch'] if params['stitchChRef'] is None else params[
 
 """ Getting the nominal tile location of the reference round using the metadata file"""
 if params['metadata_file'] is None:
-    metadataFile = os.path.join(params['dir_data_raw'], reference_cycle, 'MetaData', "{}.xml".format(reference_cycle))
+    metadataFile = os.path.join(params['dir_data_raw'], stitchRef, 'MetaData', "{}.xml".format(stitchRef))
 else:
     metadataFile = params['metadata_file']
     
