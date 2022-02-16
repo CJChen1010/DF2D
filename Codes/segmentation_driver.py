@@ -39,10 +39,13 @@ stitch_dir = params['stitch_dir']
 if 'nuc' in params['segmentation_type']:
     nuc_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
     nuc_img = imread(nuc_path)
+    bgImg = nuc_img # background image
 
 if 'cyto' in params['segmentation_type']: 
     cyto_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
     cyto_img = imread(cyto_path)
+    bgImg = cyto_img # background image
+
 
 saving_path = params['seg_dir']
 if not path.exists(saving_path):
@@ -99,7 +102,7 @@ spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep 
 print("plotting assigned rolonies")
 fig = plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
 ax = fig.gca()
-plotRolonies2d(spot_df, mask, coords = ['xg', 'yg'], label_name='cell_label', ax = ax, backgroudImg=nuc_img, backgroundAlpha=0.6)
+plotRolonies2d(spot_df, mask, coords = ['xg', 'yg'], label_name='cell_label', ax = ax, backgroudImg=bgImg, backgroundAlpha=0.6)
 fig.savefig(path.join(saving_path, 'assigned_rolonies{}.png'.format(suff)),
             transparent = False, dpi = 500, bbox_inches='tight')
 print("plotting assigned rolonies done")
@@ -115,7 +118,7 @@ centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep =
 # plotting the cells with their label
 fig = plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
 ax = fig.gca()
-ax.imshow(nuc_img, cmap='gray')
+ax.imshow(bgImg, cmap='gray')
 ax.scatter(cellInfos[:, 1], cellInfos[:, 0], s = 1, c='red')
 for i in range(cellInfos.shape[0]):
     ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 5, c = 'orange')
