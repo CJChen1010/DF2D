@@ -271,6 +271,7 @@ plt.savefig(os.path.join(savingdir, 'EmptyRatePerFOV.png'), dpi=200)
 # Barcode digits per round
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
+spot_df['barcode'] = spot_df['target'].str.split("_").str[1]
 
 barcode_mat = np.array([list(a) for a in spot_df['barcode']], dtype = int)
 display(barcode_mat)
