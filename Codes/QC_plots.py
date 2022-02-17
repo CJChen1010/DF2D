@@ -267,3 +267,20 @@ plt.xlabel("FOV")
 plt.ylabel("Empty rate")
 plt.tight_layout()
 plt.savefig(os.path.join(savingdir, 'EmptyRatePerFOV.png'), dpi=200)
+
+# Barcode digits per round
+spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
+spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
+
+barcode_mat = np.array([list(a) for a in spot_df['barcode']], dtype = int)
+display(barcode_mat)
+n_ch = barcode_mat.max()
+bc_freq = np.array([np.sum(barcode_mat == i, axis=0) for i in range(1, n_ch + 1)])
+bc_freq = bc_freq / barcode_mat.shape[0]
+
+plt.figure()
+plt.imshow(bc_freq, vmin = 0)
+plt.colorbar()
+plt.yticks(range(bc_freq.shape[0]), range(1, bc_freq.shape[0] + 1))
+plt.xticks(range(bc_freq.shape[1]), ["dc{}".format(i) for i in range(bc_freq.shape[1])])
+plt.savefig(os.path.join(savingdir, 'barcode_digit_frequency.png'))
