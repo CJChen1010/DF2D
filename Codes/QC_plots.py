@@ -274,7 +274,6 @@ spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
 spot_df['barcode'] = spot_df['target'].str.split("_").str[1]
 
 barcode_mat = np.array([list(a) for a in spot_df['barcode']], dtype = int)
-display(barcode_mat)
 n_ch = barcode_mat.max()
 bc_freq = np.array([np.sum(barcode_mat == i, axis=0) for i in range(1, n_ch + 1)])
 bc_freq = bc_freq / barcode_mat.shape[0]
