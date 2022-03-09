@@ -1,7 +1,7 @@
 ---
  ######## Registration paramteres ########
  # where the microscope 3D data is stored
- dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/211013_PermeabilizationTest/K2100233_1-D/"
+ dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/220301_DigestionTest/K1900387_2-1/"
 
  # where the maximum projected data is stored
  proj_dir: "../1_Projected/"
