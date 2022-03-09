@@ -79,7 +79,7 @@ def tile_filter_mip(fov, rnd, dir_root, dir_output='./MIP_gauss', method='gaussi
 	chdir(current_dir)
 
 
-def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, reference_cycle, maxIter):
+def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other, channel_DIC_other, reference_cycle, maxIter, numResolution):
 	print(datetime.now().strftime("%Y-%d-%m_%H:%M:%S: {} started to align".format(fov)))
 
 	""" mip_dir has to be a relative path, not an absolute path, i.e. "../"""
@@ -102,7 +102,8 @@ def alignFOV(fov, out_mother_dir, round_list, mip_dir, channel_DIC, cycle_other,
 				destinationCycle = reference_cycle,
 				originCycle = rnd,
 				resultDirectory = "./",
-				MaximumNumberOfIterations = maxIter)
+				MaximumNumberOfIterations = maxIter, 
+				NumberOfResolutions = numResolution)
 
 	os.chdir(init_dir)
 
@@ -151,6 +152,7 @@ _, _, n_fovs = getMetaData(metadataFile)
 n_pool = params['reg_npool']
 
 maxIter = params['reg_maxIter'] # maximum number of iteractions for registration
+numResolution = params['NumberOfResolutions'] # number of resolution pyramids 
 
 t0 = time()
 if not params['skip_mip']:
@@ -206,7 +208,7 @@ sys.stdout = open(reportFile, 'w') # redirecting the stdout to the log file
 partial_align = functools.partial(alignFOV, out_mother_dir=dir_output_aligned, round_list=rnd_list, 
 	mip_dir=dir_output, channel_DIC=channel_DIC, cycle_other=cycle_other, 
 	channel_DIC_other=channel_DIC_other, reference_cycle=reference_cycle, 
-	maxIter=maxIter)
+	maxIter=maxIter, numResolution=numResolution)
 
 with Pool(n_pool) as P:
 	list(P.map(partial_align, position_list))
