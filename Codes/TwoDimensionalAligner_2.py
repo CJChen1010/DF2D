@@ -82,7 +82,8 @@ class TwoDimensionalAligner():
     """ Objects of this class align images taken from one "origin" cycle to images taken from "destination" cycle of the (probably) same position """
     def __init__(self, originImagesFolder, destinationImagesFolder, 
                  originMatchingChannel, destinationMatchingChannel,
-                 imagesPosition, destinationCycle, originCycle, resultDirectory, MaximumNumberOfIterations = 500):
+                 imagesPosition, destinationCycle, originCycle, resultDirectory, 
+                 MaximumNumberOfIterations = 500, NumberOfResolutions = 5):
         self.originImagesFolder = originImagesFolder 
         self.destinationImagesFolder = destinationImagesFolder
         self.originMatchingChannel = originMatchingChannel
@@ -91,6 +92,7 @@ class TwoDimensionalAligner():
         self.destinationCycle = destinationCycle
         self.originCycle = originCycle
         self.MaximumNumberOfIterations = MaximumNumberOfIterations
+        self.NumberOfResolutions = NumberOfResolutions
 
         self.resultDirectory = resultDirectory
         if os.path.isdir(self.resultDirectory) == False:
@@ -110,7 +112,7 @@ class TwoDimensionalAligner():
         self.imageTransformer = ImageTransformer(destinationImageFiles = [pathjoin(self.destinationImagesFolder, dsImgFile) for dsImgFile in self.destinationImageFilesByChannel[self.destinationMatchingChannel]],
                                                  originImageFiles = [pathjoin(self.originImagesFolder, ogImgFile) for ogImgFile in self.originImageFilesByChannel[self.originMatchingChannel]])
         print(datetime.now().strftime("%Y-%d-%m_%H:%M:%S: ") + "Finding transform parameter started")
-        self.imageTransformer.findTransformParameters(transform = "affine", MaximumNumberOfIterations = self.MaximumNumberOfIterations)
+        self.imageTransformer.findTransformParameters(transform = "affine", MaximumNumberOfIterations = self.MaximumNumberOfIterations, NumberOfResolutions = self.NumberOfResolutions)
         print(datetime.now().strftime("%Y-%d-%m_%H:%M:%S: ") + "Finding transform parameter done")   
         
         """ Creating a directory called metadata and write transformation parameters to it """

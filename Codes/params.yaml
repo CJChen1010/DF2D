@@ -21,6 +21,9 @@
  # number of iterations for registration
  reg_maxIter: 400
 
+ # number of resolutions for image pyramid, typically 5
+ NumberOfResolutions: 5
+ 
  # pre-mipping smoothing method. Either "gaussian" or "median"
  smooth_method: "gaussian" # median
 
