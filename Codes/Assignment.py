@@ -79,6 +79,7 @@ def plotRolonies2d(rolonyDf, nucLabels, coords = ['y', 'x'], label_name = 'nucle
         circ = plt.Circle((rol[coords[0]], rol[coords[1]]), 2 * rol['radius'], 
                           linewidth = 0.7, fill = False, alpha = 0.8, 
                           color = myCmap(rol[label_name]))
+        circ_patches.append(circ)
 #         ax.add_patch(circ)
     # add the circles as a collection of patches (faster)
     col1 = col.PatchCollection(circ_patches, match_original=True)
