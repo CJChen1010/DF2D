@@ -61,6 +61,15 @@ if not os.path.isdir(savingdir):
 if not os.path.isdir(rolonyPlotDir):
     os.mkdir(rolonyPlotDir)
 
+# loading background image for whole tissue plots
+if 'nuc' in params['segmentation_type']:
+    nuc_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
+    bgImg = imread(nuc_path)
+    
+if 'cyto' in params['segmentation_type']: 
+    cyto_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
+    bgImg = imread(cyto_path)
+    
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
 
@@ -325,18 +334,10 @@ plt.savefig(os.path.join(savingdir, 'top_gene_counts.pdf'))
 """ Plotting all decoded rolonies """
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
-fheight = 25
-fwidth = int(fheight / mask.shape[0] * mask.shape[1])
 
-# loading background image
-if 'nuc' in params['segmentation_type']:
-    nuc_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
-    bgImg = imread(nuc_path)
-    
-if 'cyto' in params['segmentation_type']: 
-    cyto_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
-    bgImg = imread(cyto_path)
-    
+fheight = 25
+fwidth = int(fheight / bgImg.shape[0] * bgImg.shape[1])
+
 fig, ax = plt.subplots(figsize = (fwidth, fheight))
 ax.imshow(bgImg, cmap = 'gray')
 
@@ -364,7 +365,6 @@ destdir = os.path.join(savingdir, "GenePlots")
 if not os.path.isdir(destdir):
     os.makedirs(destdir)
     
-bgImg = nuc_img
 figHeight = 25
 figWidth = figHeight / bgImg.shape[0] * bgImg.shape[1]
 genes = gene_counts.index.to_numpy()
