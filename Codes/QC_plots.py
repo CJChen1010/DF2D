@@ -312,7 +312,7 @@ spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
 gene_counts = spot_df.groupby('gene').size().sort_values(ascending = False)
 
 fig, ax = plt.subplots(figsize = [15, 6], nrows=1)
-gene_counts = DF1.getGeneCounts()
+gene_counts = spot_df.groupby('gene').size().sort_values(ascending = False)
 ax.bar(gene_counts.index[:100], gene_counts[:100])
 ax.set_yscale('log')
 ax.tick_params(axis='x', labelrotation = 90, labelsize = 9)
