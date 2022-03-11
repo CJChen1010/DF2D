@@ -7,9 +7,29 @@ import matplotlib.collections as col
 import yaml
 import argparse
 from utils import getMetaData
+import matplotlib.collections as col
 
 def normalize(im, ceil, amin=0):
     return (np.clip(im / ceil * 255, a_min = amin, a_max = 255)).astype(np.uint8)
+
+def plotGene(spots, color='red', backgImg=None, ax=None, figheight=15, coords=['xg', 'yg'], alpha=1, ptsize=1, backgCmap='gray'):
+    if ax is None:
+        _, ax = plt.subplots(figsize = (figheight / backgImg.shape[0] * backgImg.shape[1], figheight))
+    
+    if not backgImg is None:
+        ax.imshow(backgImg, cmap=backgCmap)
+        
+    circ_patches = []
+    for i, (_, rol) in enumerate(spots.iterrows()):
+        circ = plt.Circle((rol[coords[0]], rol[coords[1]]), ptsize, 
+                          linewidth = 0.2, fill = True, alpha=alpha, color = color)
+        circ_patches.append(circ)
+
+    # add the circles as a collection of patches (faster)
+    col1 = col.PatchCollection(circ_patches, match_original=True)
+    ax.add_collection(col1)
+    return ax
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
@@ -254,7 +274,6 @@ plt.tight_layout()
 plt.savefig(os.path.join(savingdir, 'dist2cell_hist.png'), dpi=200)
 
 
-
 # Empty rate per FOV
 spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
 countPerFov = pd.crosstab(spot_df['gene'], spot_df['fov'])
@@ -285,3 +304,78 @@ plt.yticks(range(bc_freq.shape[0]), range(1, bc_freq.shape[0] + 1))
 plt.xticks(range(bc_freq.shape[1]), ["dc{}".format(i) for i in range(bc_freq.shape[1])])
 plt.title("Barcode Digit Frequency")
 plt.savefig(os.path.join(savingdir, 'barcode_digit_frequency.png'))
+
+
+# Plotting the gene count barplot
+spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
+spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
+gene_counts = spot_df.groupby('gene').size().sort_values(ascending = False)
+
+fig, ax = plt.subplots(figsize = [15, 6], nrows=1)
+gene_counts = DF1.getGeneCounts()
+ax.bar(gene_counts.index[:100], gene_counts[:100])
+ax.set_yscale('log')
+ax.tick_params(axis='x', labelrotation = 90, labelsize = 9)
+ax.set_ylabel('#rolony')
+ax.set_ylim([1, np.max(gene_counts)*1.4])
+ax.set_title('Top 100 Genes')
+plt.savefig(os.path.join(savingdir, 'top_gene_counts.pdf'))
+
+
+""" Plotting all decoded rolonies """
+spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
+spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
+fheight = 25
+fwidth = int(fheight / mask.shape[0] * mask.shape[1])
+
+# loading background image
+if 'nuc' in params['segmentation_type']:
+    nuc_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
+    bgImg = imread(nuc_path)
+    
+if 'cyto' in params['segmentation_type']: 
+    cyto_path = os.path.join(params['stitch_dir'], "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
+    bgImg = imread(cyto_path)
+    
+fig, ax = plt.subplots(figsize = (fwidth, fheight))
+ax.imshow(bgImg, cmap = 'gray')
+
+patches = []
+coords = ['xg', 'yg']
+for i, (_, rol) in enumerate(spot_df.iterrows()):
+    circ = plt.Circle((rol[coords[0]], rol[coords[1]]), 3, 
+                      linewidth = 0.2, fill = True, alpha = 0.9, color = '#FFD64B')
+    patches.append(circ)
+
+# add the circles as a collection of patches (faster)
+coll = col.PatchCollection(patches, match_original=True)
+ax.add_collection(coll)
+plt.tight_layout()
+plt.show()        
+fig.savefig(os.path.join(savingdir, 'all_decoded_rolonies.pdf'), dpi = 250)
+
+
+""" Plotting each individual gene"""
+spot_df = pd.read_csv(spot_addr, sep = "\t", index_col = 0)
+spot_df = spot_df.loc[spot_df['gene'] != 'Empty']
+gene_counts = spot_df.groupby('gene').size().sort_values(ascending = False)
+
+destdir = os.path.join(savingdir, "GenePlots")
+if not os.path.isdir(destdir):
+    os.makedirs(destdir)
+    
+bgImg = nuc_img
+figHeight = 25
+figWidth = figHeight / bgImg.shape[0] * bgImg.shape[1]
+genes = gene_counts.index.to_numpy()
+for g in genes:
+    print(g)
+    spots_g = spot_df.loc[spot_df['gene'] == g]
+    fig, ax = plt.subplots(figsize=(figWidth, figHeight))
+    ax.imshow(bgImg, cmap = "gray", vmax=400)
+    plotGene(spots_g, ax=ax, ptsize=10)
+    plt.tight_layout()
+    fig.savefig(os.path.join(destdir, "{}_rolonies.pdf".format(g)))
+    plt.close()
+
+    
