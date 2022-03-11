@@ -82,7 +82,9 @@ myCmap[:, -1] = 1
 myCmap[0] = (0, 0, 0, 1)
 myCmap = ListedColormap(myCmap)
 
-plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
+fheight = 20
+fwidth = int(fheight / mask.shape[0] * mask.shape[1])
+plt.figure(figsize = (fwidth, fheight))
 plt.imshow(mask, cmap = myCmap)
 plt.savefig(os.path.join(saving_path, 'mask{}.png'.format(suff)), dpi = 500, bbox_inches='tight')
 
@@ -100,7 +102,7 @@ spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep 
 
 # plotting assigned rolonies
 print("plotting assigned rolonies")
-fig = plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
+fig = plt.figure(figsize = (fwidth, fheight))
 ax = fig.gca()
 plotRolonies2d(spot_df, mask, coords = ['xg', 'yg'], label_name='cell_label', ax = ax, backgroudImg=bgImg, backgroundAlpha=0.6)
 fig.savefig(path.join(saving_path, 'assigned_rolonies{}.png'.format(suff)),
@@ -116,12 +118,12 @@ centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1),
 centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
 
 # plotting the cells with their label
-fig = plt.figure(figsize = (int(mask.shape[0]/200), int(mask.shape[1]/200)))
+fig = plt.figure(figsize = (fwidth, fheight))
 ax = fig.gca()
 ax.imshow(bgImg, cmap='gray')
 ax.scatter(cellInfos[:, 1], cellInfos[:, 0], s = 1, c='red')
 for i in range(cellInfos.shape[0]):
-    ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 5, c = 'orange')
+    ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 3, c = 'orange', alpha=0.8)
 fig.savefig(path.join(saving_path, 'cell_map{}.png'.format(suff)),
             transparent = True, dpi = 400, bbox_inches='tight')
 
