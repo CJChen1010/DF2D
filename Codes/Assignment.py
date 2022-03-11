@@ -3,7 +3,7 @@ from scipy.spatial import cKDTree
 from skimage.segmentation import find_boundaries
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-
+import matplotlib.collections as col
 
 class RolonyAssigner:
     """ A tool for assigning the rolonies to their closest nucleus, in both 2D and 3D. 
@@ -74,13 +74,15 @@ def plotRolonies2d(rolonyDf, nucLabels, coords = ['y', 'x'], label_name = 'nucle
     # print(boundaries)
     ax.imshow(boundaries, cmap = myCmap, alpha=0.7)
 
-    # ax.imshow(nucLabels, alpha = 0.5, cmap = myCmap, vmin = 0, vmax = myCmap.N)
-
+    circ_patches = []
     for i, rol in rolonyDf.iterrows():
         circ = plt.Circle((rol[coords[0]], rol[coords[1]]), 2 * rol['radius'], 
                           linewidth = 0.7, fill = False, alpha = 0.8, 
                           color = myCmap(rol[label_name]))
-        ax.add_patch(circ)
+#         ax.add_patch(circ)
+    # add the circles as a collection of patches (faster)
+    col1 = col.PatchCollection(circ_patches, match_original=True)
+    ax.add_collection(col1)
         # if (i %100) == 0:
         #     print(i)
     plt.tight_layout()
