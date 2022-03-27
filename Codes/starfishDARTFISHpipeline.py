@@ -33,7 +33,8 @@ def DARTFISH_pipeline(fov, codebook, magnitude_threshold, binarize, min_cutoff =
 	norm_imgs = sc_filt.run(gauss_imgs)
 
 	if not normalize_max is None:
-		norm_imgs = norm_imgs.apply(lambda x: 255 / normalize_max * np.clip(x, min_cutoff/255, normalize_max/255)) # 211019
+		norm_imgs = norm_imgs.apply(lambda x: x * (x > min_cutoff/255))
+		norm_imgs = norm_imgs.apply(lambda x: 255 / normalize_max * np.clip(x, 0, normalize_max/255)) # 211019
 
 	z_filt = Filter.ZeroByChannelMagnitude(thresh=.05, normalize=binarize)
 	filtered_imgs = z_filt.run(norm_imgs)
