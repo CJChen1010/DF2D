@@ -153,7 +153,12 @@
  # where the segmentation and assignment files are saved
  seg_dir: "../4_CellAssignment"
 
- # segmentation type for Cellpose. Options: "nuc", "cyto", "nuc+cyto"
+ # name of the model to use. String (for built-in models) or full path to the model (e.g., custom model)
+ pretrained_model: "nuclei" # "cyto" # "CP"
+
+ # segmentation type for Cellpose. Options: 
+ #  1) "nuc": only nuclei, 2) "cyto": only cytoplasm, 
+ #  3) "nuc+cyto": cytoplasm segmentation with aid from nuclear stain
  segmentation_type: "nuc"
 
  # the round name that contains nuclear stain. Doesn't matter if segmentation_type == 'cyto'
@@ -167,6 +172,9 @@
 
  # channel for cyto stain in `cyto_rnd`. Doesn't matter if segmentation_type == 'nuc'
  cyto_ch: "ch02"
+
+ # flow_threshold parameter of cellpose. Increase if many missing cells, decrease if too many spurious cells. Default 0.4
+ flow_threshold: 0.8 # 0.4
 
  # average diameter of cells (for "cyto" and "nuc+cyto") or nuclei (for "nuc") in pixels
  seg_diam: 40
@@ -182,6 +190,7 @@
 
  # maximum acceptable distance of rolonies to their closest cell in pixels
  max_rol2nuc_dist: 150
+
 
  ######## QC paramteres ########
  # where the qc files will be stored
