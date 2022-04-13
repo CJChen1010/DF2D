@@ -11,9 +11,6 @@ args = parser.parse_args()
 params = yaml.safe_load(open(args.param_file, "r"))
 param_file = args.param_file
 
-# param_file = "params.yaml"
-# params = yaml.safe_load(open(param_file, "r"))    
-# print(params)
 
 """ Running image registration"""
 align_shell = [sys.executable, "AlignerDriver.py", param_file]

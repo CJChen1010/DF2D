@@ -9,6 +9,7 @@ from functools import partial
 from matplotlib.colors import ListedColormap
 import yaml
 import argparse
+from cellpose.plot import mask_overlay
 
 def mask2centroid(maskImg, ncore = 8):
     """ Finding centroids and area of segmented cells from a mask image """
@@ -34,16 +35,28 @@ parser.add_argument('param_file')
 args = parser.parse_args()
 params = yaml.safe_load(open(args.param_file, "r"))
 
+segm_type = params['segmentation_type']
+flow_thresh = params['flow_threshold']
+diam = params['seg_diam']
+
 stitch_dir = params['stitch_dir']
 
-if 'nuc' in params['segmentation_type']:
+if "pretrained_model" in params:
+    pretrained_model = params['pretrained_model']
+elif segm_type == 'nuc':
+    pretrained_model = 'nuclei'
+else:
+    pretrained_model = 'cyto'
+
+
+if 'nuc' in segm_type:
     nuc_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
-    nuc_img = imread(nuc_path)
+    nuc_img = imread(nuc_path)[2000:4000, 2000:4000]
     bgImg = nuc_img # background image
 
-if 'cyto' in params['segmentation_type']: 
+if 'cyto' in segm_type: 
     cyto_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
-    cyto_img = imread(cyto_path)
+    cyto_img = imread(cyto_path)[2000:4000, 2000:4000]
     bgImg = cyto_img # background image
 
 
@@ -61,31 +74,26 @@ spot_file = os.path.join(params['dc_out'] + '_' + bcmag, 'all_spots_filtered.tsv
 if params['skip_seg']:
     mask = np.load(path.join(saving_path, 'segmentation_mask{}.npy'.format(suff)))
 else:
-    print('{} segmentation started.'.format(params['segmentation_type']))
-    diam = params['seg_diam']
-    segmentor = Segmentor2D()
+    print('{} segmentation started.'.format(segm_type))
+    
+    segmentor = Segmentor2D(pretrained_model=pretrained_model, flow_threshold=flow_thresh)
 
-    if params['segmentation_type'] == 'nuc':
-        mask = segmentor.segment_nuclei([nuc_img], diameters = diam, 
+    if segm_type == 'nuc':
+        mask = segmentor.segment_singleChannel([nuc_img], diameters = diam, 
                              out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
-    elif params['segmentation_type'] == 'cyto':
-        mask = segmentor.segment_cyto([cyto_img], diameters = diam, 
+    elif segm_type == 'cyto':
+        mask = segmentor.segment_singleChannel([cyto_img], diameters = diam, 
                              out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
-    elif params['segmentation_type'] == 'cyto+nuc':
-        mask = segmentor.segment_cyto_nuc([nuc_img], [cyto_img], diameters = diam, 
+    elif segm_type == 'cyto+nuc' or segm_type == "nuc+cyto":
+        mask = segmentor.segment_dualChannel([nuc_img], [cyto_img], diameters = diam, 
                              out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
     print("Segmentation done.")
     
 # plot segmentation mask
-myCmap = np.random.rand(np.max(mask) + 1, 4)
-myCmap[:, -1] = 1
-myCmap[0] = (0, 0, 0, 1)
-myCmap = ListedColormap(myCmap)
-
 fheight = 20
 fwidth = int(fheight / mask.shape[0] * mask.shape[1])
 plt.figure(figsize = (fwidth, fheight))
-plt.imshow(mask, cmap = myCmap)
+plt.imshow(mask_overlay(bgImg, mask))
 plt.savefig(os.path.join(saving_path, 'mask{}.png'.format(suff)), dpi = 500, bbox_inches='tight')
 
 
