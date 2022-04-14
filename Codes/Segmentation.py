@@ -48,9 +48,6 @@ class Segmentor2D:
             raise TypeError('3D image loaded instead of 2D')        
         
         rgb_list = [np.stack([cyt, nuc, np.zeros_like(cyt)], axis=2) for cyt, nuc in zip(cyto_imgs, nuc_imgs)]
-        print(rgb_list)
-        print(len(rgb_list))
-        print(rgb_list[0].shape)
         masks=self.model_eval(imgs=rgb_list, channels = [1, 2], diams = diameters, **kwargs)
         
         if out_files is not None:
