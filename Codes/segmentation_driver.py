@@ -9,7 +9,6 @@ from functools import partial
 from matplotlib.colors import ListedColormap
 import yaml
 import argparse
-from cellpose.plot import mask_overlay
 
 def mask2centroid(maskImg, ncore = 8):
     """ Finding centroids and area of segmented cells from a mask image """
@@ -30,6 +29,7 @@ def mask2centroid_parallel(rng, mimg):
         cent.append((xc, yc, area))    
     return np.array(cent)
     
+
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
 args = parser.parse_args()
@@ -89,56 +89,36 @@ else:
                              out_files = [path.join(saving_path, 'segmentation_mask{}.npy'.format(suff))])[0]
     print("Segmentation done.")
     
-# plot segmentation mask
-fheight = 40
-fwidth = int(fheight / mask.shape[0] * mask.shape[1])
-plt.figure(figsize = (fwidth, fheight))
-plt.imshow(mask_overlay(bgImg, mask))
-plt.savefig(os.path.join(saving_path, 'mask{}.png'.format(suff)), dpi = 500, bbox_inches='tight')
-
 
 # Rolony assignment
 spot_df = pd.read_csv(spot_file, index_col=0, sep = '\t')
 assigner = RolonyAssigner(nucleiImg=mask, rolonyDf=spot_df, axes = ['yg', 'xg'])
 labels, dists = assigner.getResults()
 
-# spot_df['cell_label'] = labels
-# spot_df['dist2cell'] = np.round(dists, 2)
-# spot_df = spot_df.sort_values('cell_label', ignore_index = True)
-# spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep = '\t', index = False, float_format='%.3f')
+spot_df['cell_label'] = labels
+spot_df['dist2cell'] = np.round(dists, 2)
+spot_df = spot_df.sort_values('cell_label', ignore_index = True)
+spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep = '\t', index = False, float_format='%.3f')
 
 
-# plotting assigned rolonies
-print("plotting assigned rolonies")
-fig = plt.figure(figsize = (fwidth, fheight))
-ax = fig.gca()
-plotRolonies2d(spot_df, mask, coords = ['xg', 'yg'], label_name='cell_label', ax = ax, backgroudImg=bgImg, backgroundAlpha=0.8)
-fig.savefig(path.join(saving_path, 'assigned_rolonies{}.png'.format(suff)),
-            transparent = False, dpi = 500, bbox_inches='tight')
-print("plotting assigned rolonies done")
+# finding the cells cell information: centroid and area
+cellInfos = mask2centroid(mask, ncore = params['centroid_npool'])
+centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1), 
+                            'centroid_x' : cellInfos[:, 0], 'centroid_y' : cellInfos[:, 1],
+                            'area' : cellInfos[:, 2]})
+centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
 
+# plotting the cells with their label
+cellm_thr = threading.Thread(target = cellmap_plot, 
+                                kwargs = {'cellInfos' : cellInfos, 'bgImg' : bgImg, 
+                                'savepath' : path.join(saving_path, 'cell_map{}.png'.format(suff)), 
+                                'fwidth' : fwidth, 'fheight' : fheight})
+cellm_thr.start()
 
-# # finding the cells cell information: centroid and area
-# cellInfos = mask2centroid(mask, ncore = params['centroid_npool'])
-# centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1), 
-#                             'centroid_x' : cellInfos[:, 0], 'centroid_y' : cellInfos[:, 1],
-#                             'area' : cellInfos[:, 2]})
-# centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
-
-# # plotting the cells with their label
-# fig = plt.figure(figsize = (fwidth, fheight))
-# ax = fig.gca()
-# ax.imshow(bgImg, cmap='gray')
-# ax.scatter(cellInfos[:, 1], cellInfos[:, 0], s = 1, c='red')
-# for i in range(cellInfos.shape[0]):
-#     ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 3, c = 'orange', alpha=0.8)
-# fig.savefig(path.join(saving_path, 'cell_map{}.png'.format(suff)),
-#             transparent = True, dpi = 400, bbox_inches='tight')
-
-# # Making the cell by gene matrix
-# spot_df = spot_df.loc[spot_df['dist2cell'] <= params['max_rol2nuc_dist']] # filtering rolonies based on distance to cell
-# nuc_gene_df = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene']).size()
-# nuc_gene_df = nuc_gene_df.reset_index().pivot(index = 'cell_label', columns = 'gene').fillna(0).astype(int)
-# nuc_gene_df.columns = nuc_gene_df.columns.droplevel()
-# nuc_gene_df.to_csv(path.join(saving_path, 'cell-by-gene{}.tsv'.format(suff)), sep = '\t')
+# Making the cell by gene matrix
+spot_df = spot_df.loc[spot_df['dist2cell'] <= params['max_rol2nuc_dist']] # filtering rolonies based on distance to cell
+nuc_gene_df = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene']).size()
+nuc_gene_df = nuc_gene_df.reset_index().pivot(index = 'cell_label', columns = 'gene').fillna(0).astype(int)
+nuc_gene_df.columns = nuc_gene_df.columns.droplevel()
+nuc_gene_df.to_csv(path.join(saving_path, 'cell-by-gene{}.tsv'.format(suff)), sep = '\t')
 
