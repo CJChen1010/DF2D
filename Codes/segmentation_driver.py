@@ -30,7 +30,18 @@ def mask2centroid_parallel(rng, mimg):
         cent.append((xc, yc, area))    
     return np.array(cent)
     
-
+def cellmap_plot(cellInfos, bgImg, savepath, fwidth, fheight):
+    print("Plotting cell map")
+    fig = plt.figure(figsize = (fwidth, fheight))
+    ax = fig.gca()
+    ax.imshow(bgImg, cmap='gray')
+    ax.scatter(cellInfos[:, 1], cellInfos[:, 0], s = 1, c='red')
+    for i in range(cellInfos.shape[0]):
+        ax.text(cellInfos[i, 1], cellInfos[i, 0], str(i), fontsize = 3, c = 'orange', alpha=0.8)
+    fig.savefig(savepath,
+                transparent = True, dpi = 400, bbox_inches='tight')
+    print("Plotting cell map done")
+    
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
 args = parser.parse_args()
@@ -110,11 +121,14 @@ centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1),
 centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
 
 # plotting the cells with their label
+print('Plotting cell map')
+cellInfos = pd.read_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep="\t").to_numpy()[:, 1:]
 cellm_thr = threading.Thread(target = cellmap_plot, 
                                 kwargs = {'cellInfos' : cellInfos, 'bgImg' : bgImg, 
                                 'savepath' : path.join(saving_path, 'cell_map{}.png'.format(suff)), 
                                 'fwidth' : fwidth, 'fheight' : fheight})
 cellm_thr.start()
+
 
 # Making the cell by gene matrix
 spot_df = spot_df.loc[spot_df['dist2cell'] <= params['max_rol2nuc_dist']] # filtering rolonies based on distance to cell
