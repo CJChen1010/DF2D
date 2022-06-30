@@ -418,7 +418,7 @@ genes = gene_counts.index.to_numpy()
 for g in genes:
     print(g)
     spots_g = spot_df.loc[spot_df['gene'] == g]
-    fig, ax = plt.subplots(figsize=(figWidth, figHeight))
+    fig, ax = plt.subplots(figsize=(fwidth, fheight))
     ax.imshow(bgImg, cmap = "gray", vmax=400)
     plotGene(spots_g, ax=ax, ptsize=10)
     plt.tight_layout()

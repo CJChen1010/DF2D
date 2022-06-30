@@ -9,6 +9,7 @@ from functools import partial
 from matplotlib.colors import ListedColormap
 import yaml
 import argparse
+import threading
 
 def mask2centroid(maskImg, ncore = 8):
     """ Finding centroids and area of segmented cells from a mask image """
