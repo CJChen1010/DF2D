@@ -41,7 +41,8 @@ def cellmap_plot(cellInfos, bgImg, savepath, fwidth, fheight):
     fig.savefig(savepath,
                 transparent = True, dpi = 400, bbox_inches='tight')
     print("Plotting cell map done")
-    
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file')
 args = parser.parse_args()
@@ -62,12 +63,12 @@ else:
 
 
 if 'nuc' in segm_type:
-    nuc_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
+    nuc_path = os.path.join(stitch_dir, "{}_{}.tif".format(params['nuc_rnd'], params['nuc_ch']))
     nuc_img = imread(nuc_path)
     bgImg = nuc_img # background image
 
 if 'cyto' in segm_type: 
-    cyto_path = os.path.join(stitch_dir, "MIP_{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
+    cyto_path = os.path.join(stitch_dir, "{}_{}.tif".format(params['cyto_rnd'], params['cyto_ch']))
     cyto_img = imread(cyto_path)
     bgImg = cyto_img # background image
 
@@ -78,9 +79,8 @@ if not path.exists(saving_path):
 
 suff = params['seg_suf']
 
-bcmag = "bcmag{}".format(params['bcmag'])
     
-spot_file = os.path.join(params['dc_out'] + '_' + bcmag, 'all_spots_filtered.tsv')
+spot_file = os.path.join(params['dc_out'], 'all_spots_filtered.tsv')
 
 # segmenting the nuclear image
 if params['skip_seg']:
@@ -110,27 +110,20 @@ labels, dists = assigner.getResults()
 spot_df['cell_label'] = labels
 spot_df['dist2cell'] = np.round(dists, 2)
 spot_df = spot_df.sort_values('cell_label', ignore_index = True)
-spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep = '\t', index = False, float_format='%.3f')
+spot_df.to_csv(path.join(saving_path, 'spots_assigned{}.tsv'.format(suff)), sep = '\t', float_format='%.3f')
 
 
 # finding the cells cell information: centroid and area
-cellInfos = mask2centroid(mask, ncore = params['centroid_npool'])
-centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1), 
-                            'centroid_x' : cellInfos[:, 0], 'centroid_y' : cellInfos[:, 1],
-                            'area' : cellInfos[:, 2]})
-centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
-
-# plotting the cells with their label
-print('Plotting cell map')
-cellInfos = pd.read_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep="\t").to_numpy()[:, 1:]
-cellm_thr = threading.Thread(target = cellmap_plot, 
-                                kwargs = {'cellInfos' : cellInfos, 'bgImg' : bgImg, 
-                                'savepath' : path.join(saving_path, 'cell_map{}.png'.format(suff)), 
-                                'fwidth' : fwidth, 'fheight' : fheight})
-cellm_thr.start()
+if not params['skip_seg']:
+    cellInfos = mask2centroid(mask, ncore = params['centroid_npool'])
+    centroid_df = pd.DataFrame({'cell_label' : np.arange(1, mask.max() + 1), 
+                                'centroid_x' : cellInfos[:, 0], 'centroid_y' : cellInfos[:, 1],
+                                'area' : cellInfos[:, 2]})
+    centroid_df.to_csv(path.join(saving_path, 'cell_info{}.tsv'.format(suff)), sep = '\t', index = False)
 
 
 # Making the cell by gene matrix
+print('Making cell by gene matrix')
 spot_df = spot_df.loc[spot_df['dist2cell'] <= params['max_rol2nuc_dist']] # filtering rolonies based on distance to cell
 nuc_gene_df = spot_df[['cell_label', 'gene']].groupby(by = ['cell_label', 'gene']).size()
 nuc_gene_df = nuc_gene_df.reset_index().pivot(index = 'cell_label', columns = 'gene').fillna(0).astype(int)

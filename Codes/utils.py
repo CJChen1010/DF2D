@@ -1,5 +1,11 @@
 import xml.etree.ElementTree as ET
 import numpy as np 
+import os
+
+import pandas as pd
+from matplotlib import pyplot as plt
+from skimage.io import imshow
+from matplotlib.patches import Rectangle
 
 
 def getMetaData(metadataXml):
@@ -58,3 +64,31 @@ def getTileLocs(metadataXml):
         pos_y = np.round((float(tile.attrib['PosY']) - y_0) / pxSize, 2)
         tiles_px.append((pos_x, pos_y))
     return tiles_px
+
+def getNumSections(metadataXml):
+    """ Parses a metadata file to find the number of sections"""
+    tree = ET.parse(metadataXml)
+    root = tree.getroot()
+    settings = [elem for elem in root.iter() if elem.tag == "ATLConfocalSettingDefinition"][0]
+    return(int(settings.attrib['Sections']))
+
+def plotFOVMap(bgImg, coords_file="registration_reference_coordinates.csv", figure_height=12, savefile="./fov_map.pdf", fov_size_px=1024):
+    tile_coords = pd.read_csv(coords_file)
+    tile_coords['x'] = (tile_coords['x'] - tile_coords['x'].min()).astype(int)
+    tile_coords['y'] = (tile_coords['y'] - tile_coords['y'].min()).astype(int)
+
+    fwidth = int(figure_height / bgImg.shape[0] * bgImg.shape[1])
+
+    fig, ax = plt.subplots(figsize=(fwidth, figure_height))
+    imshow(bgImg)
+
+    for i, row in tile_coords.iterrows():
+        plt.text(row['x'] + fov_size_px['1']/2, row['y'] + fov_size_px['2']/2, row['fov'], c = 'yellow',
+                    horizontalalignment='center',
+                    verticalalignment='center')
+        rect = Rectangle((row['x'], row['y']), fov_size_px['1'], fov_size_px['2'], linewidth=1, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+    plt.tight_layout()
+    fig.savefig(savefile, dpi=200)
+

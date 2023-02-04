@@ -2,9 +2,10 @@ import os, re, IJ_stitch_201020 as IJS
 import shutil, sys
 from datetime import datetime
 import pandas as pd, numpy as np
-from utils import getTileLocs
+from utils import getTileLocs, plotFOVMap, getMetaData
 import yaml
 import argparse 
+from skimage.io import imread
 
 """ We want to stitch all channels of all cycles of DART-FISH.
     Since all the images that need to be stitched have to in the same directory, 
@@ -115,7 +116,10 @@ else:
 stitch_dir = params['stitch_dir']
 
 """ names of rounds to be stitched"""
-rounds = params['stch_rounds']# names of the rounds to be stitched
+if not params['stch_rounds'] is None:
+    rounds = params['stch_rounds']
+else:
+    rounds = params['reg_rounds']
 
 stitchRef = params['ref_reg_cycle'] if params['stitchRefCycle'] is None else params['stitchRefCycle'] # the round to be used as the reference for stitching
 stitchChRef = params['ref_reg_ch'] if params['stitchChRef'] is None else params['stitchChRef'] # default reference channel for stitching
@@ -261,3 +265,16 @@ coords.to_csv(os.path.join(stitch_dir, 'registration_reference_coordinates.csv')
 
 
 sys.stdout = orig_stdout # restoring the stdout pipe to normal
+
+
+""" Plotting the FOV map"""
+allStitchedFiles = os.listdir(stitch_dir)
+bgfile = [file for file in allStitchedFiles if (re.search(params['fovMap_bg'][0], file) is not None) and (re.search(params['fovMap_bg'][1], file) is not None) and (file.endswith(".tif"))]
+if len(bgfile) > 1:
+    raise Exception("Files {} were found for background of FOV map".format(bgfile))
+bgImg = imread(os.path.join(stitch_dir, bgfile[0]))
+npix, _, _ = getMetaData(metadataFile)
+
+plotFOVMap(bgImg, coords_file=os.path.join(stitch_dir, 'registration_reference_coordinates.csv'), figure_height=12, 
+    savefile=os.path.join(stitch_dir, "fov_map.pdf"), fov_size_px=npix)
+

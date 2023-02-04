@@ -1,7 +1,7 @@
 ---
  ######## Registration paramteres ########
  # where the microscope 3D data is stored
- dir_data_raw: "/media/NAS2/Users/Kian_NAS2/DART_FISH/Raw/220301_DigestionTest/K1900387_2-1/"
+ dir_data_raw: "/media/Scratch_SSD/kian/DART-FISH/220912_Paper/Brain/UW7118_M1C_shortgenes_RT-gel/0_Raw/" #"/media/NAS4/Chien-Ju/DART-FISH/2022/20221205/"
 
  # where the maximum projected data is stored
  proj_dir: "../1_Projected/"
@@ -10,25 +10,34 @@
  reg_dir: "../2_Registered/"
 
  # list of all rounds to be registered
- reg_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "4_Empty", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
+ reg_rounds: ["anchor", "dc0", "dc1", "dc2", "dc3", "dc4", "dc5", "draq5"] # ['anchor', 'dc3']
 
  # reference cycle for registration 
- ref_reg_cycle: "5_dc3" 
+ ref_reg_cycle: "dc3" 
 
  # where the microscope metadata is. Set to null if metadata is here: dir_data_raw/ref_reg_cycle/MetaData/ref_reg_cycle.xml
- metadata_file: null
+ metadata_file: "/media/Scratch_SSD/kian/DART-FISH/220912_Paper/Brain/UW7118_M1C_shortgenes_RT-gel/0_Raw/dc3/MetaData/20221205_dc3.xml" #"/media/NAS4/Chien-Ju/DART-FISH/2022/20221205/dc5/MetaData/20221205_dc5.xml"
 
  # number of iterations for registration
- reg_maxIter: 400
+ reg_maxIter: 250
 
  # number of resolutions for image pyramid, typically 5
  NumberOfResolutions: 5
  
+ # the type of transformation for registration: translation, rigid, affine
+ reg_transform: 'affine'
+
+ # if scale of the transformation parameters are estimated. If false, then params_scales needs to be set
+ AutomaticScaleEstimation: false #true
+
+ # only used if AutomaticScaleEstimation==false. Sets the relative scale of rotation parameters vs translation
+ params_scales: ['20'] #['20000'] # None
+
  # pre-mipping smoothing method. Either "gaussian" or "median"
- smooth_method: "gaussian" # median
+ smooth_method: median
 
  # sigma if smooth_method=="gaussian", window size if smooth_method=="median"
- smooth_degree: 0.2 # 3
+ smooth_degree: 2
 
  # channel for registration on all cycles except those specified in `cycle_other`
  ref_reg_ch: "ch01" # DIC channel for reference cycle
@@ -37,20 +46,25 @@
  cycle_other: {} # example: {"9_DRAQ5" : "ch00"}
  
  # number of parallel jobs for registration
- reg_npool: 6
+ reg_npool: 10
+
+ # number of parallel jobs for maximum intensity projection
+ mip_npool: 10
 
  # Skip maximum intensity projection (for troubleshooting)
  skip_mip: false
 
  # two channel rounds: list of rounds that only have ch00 and ch01
- twoChannelRounds: null # ["9_DRAQ5"]
+ twoChannelRounds: ["draq5"]
 
+ # the regex for the file names of the raw files
+ filePat3d: "20221205_(?P<rndName>\\S+)?_(?P<fov>s\\d+)_(?P<z>z\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1: rnd, 2:fov, 3: z, 4: ch
 
  
 
  ######## Background subtraction paramteres ########
  # if there is a background cycle to subtract from all other cycles
- background_subtraction: true # false
+ background_subtraction: false
 
  # background cycles names. Doesn't matter if `background_subtraction` is false. 
  background_cycles: ["4_Empty"]
@@ -63,13 +77,12 @@
 
 
 
-
  ######## Stitching paramteres ########
  # where stitching results are saved 
  stitch_dir: "../2_Registered/stitched/"
 
- # rounds to be stitched. Has to be compatible with `reg_rounds`
- stch_rounds: ["0_anchor", "1_dc0", "2_dc1", "3_dc2", "5_dc3", "6_dc4", "7_dc5", "8_dc6", "9_DRAQ5"]
+ # rounds to be stitched. Has to be compatible with `reg_rounds`. If null, `reg_rounds` will be used.
+ stch_rounds: null
 
  # the round to be used as the reference for stitching. if null, uses `ref_reg_cycle`
  stitchRefCycle: null # or "5_dc3"
@@ -78,80 +91,100 @@
  stitchChRef: null # or "ch01"
 
  # Image-j path
- ij_path: "/media/Home_Raid1_Voyager/kian/Codes/DART-FISH/image_stitching/Fiji.app/ImageJ-linux64"
+ ij_path: "/media/Home_Raid1/kian/packages/Fiji.app/ImageJ-linux64"
 
  # the regex pattern with the file names
- stchFilePattern: "(?P<intro>MIP)_(?P<rndName>\\d+_\\S+)?_(?P<fov>FOV\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1: MIP_rnd#, 2:dc/DRAQ, 3: FOV, 4: ch
+ stchFilePattern: "(?P<rndName>\\S+)?_(?P<fov>FOV\\d+)_(?P<ch>ch\\d+)\\S*.tif$" # 0: all, 1:dc/DRAQ, 2: FOV, 3: ch
  
  # the regex pattern for fov names
  fov_pat: "FOV(\\d+)" # pattern to extract the fov# 
 
-
-
-
- ######## Starfish format paramteres ########
- # rounds for decoding. The order has to match the codebook
- dc_rounds: ["1_dc0", "2_dc1", "3_dc2", "5_dc3", "6_dc4", "7_dc5", "8_dc6"]
-
- # the nuclear stain round
- stain_round: "9_DRAQ5"
-
- # directory for starfish data
- starfish_dir: "../3_Decoded/data_Starfish"
-
- # path to codebook
- codebook_path: "_codebook/HLK2021_kidney_codebook.json"
-
- # number of decoding rounds
- n_rounds: 7
-
- # number of fluorescent channels
- n_fluor_ch: 3
-
- # number of z-planes for decoding
- n_zplanes: 1
+ # the background image for the fov map: [round, channel]
+ fovMap_bg : ["anchor", "ch03"]
 
 
 
 
  ######## Decoding paramteres ########
  # where decoding results will be stored + prefix
- dc_out: "../3_Decoded/output_Starfish"
+ dc_out: "../3_Decoded2/"
 
- # barcode magnitude to use
- bcmag: 0.6
+ # path to codebook
+ codebook_path: "_codebook/short_gene_codebook+10empty.txt"
 
- # binarize in Starfish decoding 
- dc_binarize: false
+ # rounds for decoding. The order has to match the codebook
+ dc_rounds: ["dc0", "dc1", "dc2", "dc3", "dc4", "dc5"]
 
- # intensities are scaled such that values higher than this are set to 255. Set to null for no normalization
- max_intensity: 30
+ # the suffix to be appended to the end of all output files
+ dc_suff: ""
+ 
+ # the mapping between codes, i.e. [1, 2, 3] to channels
+ channel_order: ['ch02', 'ch00', 'ch03']
+
+ # intensities are scaled such that values higher than this are set to 255. "max" scales the maximum to be 255.
+ max_intensity: "max" # 255
 
  # intensities below this value are set to 0
  min_intensity: 1
 
- # valid area range for rolonies
- rolony_area: [2, 100]
-
  # number of pools for decoding
- dc_npool: 6
+ dc_npool: 20
 
+ # minimum (l2) norm for pixel intensities to be decoded
+ min_dc_norm: 0.25
+
+ # regularization parameter for elastic net (sklearn.linear_model.ElasticNet)
+ elasticnet_alpha: 0.05 
+
+ # l1 ratio in elastic net regularization. Set to 1 for lasso which is faster but may not handle non-unique combinations well
+ elasticnet_l1ratio: 0.99
+
+ # coefficient selection for optimization. Can be "random" or "cyclic". "cyclic" is slower but it is deterministic
+ elasticnet_selection: 'random'
+
+ # thresholds for elbow-point detection, applied to the elasticnet weights. First value corresponds to the highest weight, second value to the 2nd highest weight
+ elbow_thresholds: [0.5, 0.35]
+
+ # threshold for the maximum spot weight, above which are kept (input to skimage.feature.peak_local_max)
+ min_maxWeight: 0.12 
+
+ # sigma for gaussian smoothing on OLS weight maps (not too critical, large values mask real weights)
+ weight_smoothing_sigma: 0.7
+
+ # threshold on the weights after gaussian smoothing. If smoothing is being done, has to be >0.
+ min_weight: 0.05
+
+ # number of iterations for channel coefficient estimation. 0 to skip 
+ chan_coef_niter: 2
+
+ # if list, name of fovs to use for channel coef estimation. If int, number of fovs to sample
+ chan_coef_fovs: 15
+
+ # number of pixels to sample from each fov to estimate channel coefficients.
+ chan_coef_samples: 5000
 
 
 
  ######## Combining FOV's paramteres ########
- # maximum fraction of empty barcodes
- emptyFractionThresh: 0.15
+ # Cutoff on the probability of spots being empty. Spots above this value are filtered out
+ emptyProbabilityThr: "infer" # 0.3
 
  # radius in pixels for removing rolonies in overlapping boundaries
  overlapRemovalRadius: 4.5
 
+ # fraction of spots per field of view to be used for training the empty classifier (a random forest)
+ distance_nn_frac: 0.3
+ 
+ # n_estimator parameter for the random forest model. See sklearn's documentation for RandomForestClassifier
+ randomForest_nEstimators: 100
 
-
+ # max_depth parameter for the random forest model. See sklearn's documentation for RandomForestClassifier
+ randomForest_maxDepth: 4
+ 
 
  ######## Segmentation paramteres ########
  # where the segmentation and assignment files are saved
- seg_dir: "../4_CellAssignment"
+ seg_dir: "../4_CellAssignment2/"
 
  # name of the model to use. String (for built-in models) or full path to the model (e.g., custom model)
  pretrained_model: "nuclei" # "cyto" # "CP"
@@ -162,42 +195,43 @@
  segmentation_type: "nuc"
 
  # the round name that contains nuclear stain. Doesn't matter if segmentation_type == 'cyto'
- nuc_rnd : "0_anchor" 
+ nuc_rnd : "draq5" 
 
  # channel for nuclear stain in `nuc_rnd`. Doesn't matter if segmentation_type == 'cyto'
- nuc_ch: "ch03"
+ nuc_ch: "ch00"
 
  # the round name that contains cytoplasmic stain. Doesn't matter if segmentation_type == 'nuc'
- cyto_rnd : "0_anchor"
+ cyto_rnd : "anchor"
 
  # channel for cyto stain in `cyto_rnd`. Doesn't matter if segmentation_type == 'nuc'
- cyto_ch: "ch02"
+ cyto_ch: "ch03"
 
  # flow_threshold parameter of cellpose. Increase if many missing cells, decrease if too many spurious cells. Default 0.4
  flow_threshold: 0.8 # 0.4
 
  # average diameter of cells (for "cyto" and "nuc+cyto") or nuclei (for "nuc") in pixels
- seg_diam: 40
+ seg_diam: 30
 
  # suffix for generated files. Could be "".
- seg_suf: "_N9"
+ seg_suf: "_nuc"
  
  # whether to skip the segmentation. For troubleshooting
  skip_seg: false
 
  # number of cores for finding centroids
- centroid_npool: 8
+ centroid_npool: 10
 
  # maximum acceptable distance of rolonies to their closest cell in pixels
  max_rol2nuc_dist: 150
 
 
+
  ######## QC paramteres ########
  # where the qc files will be stored
- qc_dir : "../5_Analysis" 
+ qc_dir : "../5_Analysis2" 
 
  # name of anchor round 
- anc_rnd: "0_anchor"
+ anc_rnd: "anchor"
 
  # anchor channel, where all rolonies are on
  anc_ch: "ch00"

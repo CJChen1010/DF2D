@@ -63,7 +63,6 @@ def plotRolonies2d(rolonyDf, nucLabels, coords = ['y', 'x'], label_name = 'nucle
         fig, ax = plt.subplots(nrows = 1, figsize = (18, 11))
     
     boundaries = nucLabels.copy()
-    print("finding boundaries")
     boundaries[~find_boundaries(nucLabels)] = 0
 
 
@@ -89,41 +88,36 @@ def plotRolonies2d(rolonyDf, nucLabels, coords = ['y', 'x'], label_name = 'nucle
     plt.tight_layout()
     plt.show()    
 
-# def plotRolonies2d_2(rolonyDf, nucLabels, coords = ['y', 'x'], backgroudImg = None, ax = None):
-#     myCmap = np.random.rand(np.max(nucLabels) + 1, 4)
-#     myCmap[:, -1] = 1
-#     myCmap[0] = (0, 0, 0, 1)
-#     myCmap = ListedColormap(myCmap)
+def plotRolonies2d2(rolonyDf, nucLabels, coords = ['y', 'x'], label_name = 'nucleus_label', backgroudImg = None, ax = None, backgroundAlpha = 0.5):
+    myCmap = np.random.rand(np.max(nucLabels) + 1, 4)
+    myCmap[:, -1] = 1
+    myCmap[0] = (0, 0, 0, 1)
+    myCmap = ListedColormap(myCmap)
+    if ax is None:
+        fig, ax = plt.subplots(nrows = 1, figsize = (18, 11))
+    
+    boundaries = nucLabels.copy()
+    boundaries[~find_boundaries(nucLabels)] = 0
 
-#     if ax is None:
-#         fig, ax = plt.subplots(nrows = 1, figsize = (18, 11))
 
-#     boundaries = nucLabels.copy()
-#     boundaries[~find_boundaries(nucLabels)] = 0
-
-
-#     if not backgroudImg is None:
-#         ax.imshow(backgroudImg, alpha = 0.5, cmap = 'gray')
-
-#     ax.imshow(boundaries, alpha = 0.7, cmap = myCmap, vmin = 0, vmax = myCmap.N)
-
+    if not backgroudImg is None:
+        ax.imshow(backgroudImg, alpha = backgroundAlpha, cmap = 'gray')
+    
+    # ax.imshow(mask2rgb(boundaries, myCmap), alpha = 0.7)#, vmin = 0, vmax = myCmap.N)
+    # print(boundaries)
+    ax.imshow(boundaries, cmap = myCmap, alpha=0.7)
+    ax.scatter(rolonyDf[coords[0]], rolonyDf[coords[1]], s=0.3, alpha=0.8, color = list(map(lambda x: myCmap(x), rolonyDf[label_name])))
+#     circ_patches = []
 #     for i, rol in rolonyDf.iterrows():
-#         circ = plt.Circle((rol[coords[0]], rol[coords[1]]), rol['radius'], 
-#                           linewidth = 1, fill = False, alpha = 0.8, 
-#                           color = myCmap(rol['nucleus_label']))
-#         ax.add_patch(circ)
-#         plt.text(x= rol[coords[0]], y = rol[coords[1]], s = rol['nucleus_label'],
-#                 color = myCmap(rol['nucleus_label']))
-    
-#     for i in range(0, nucLabels.max(), 20):
-#         xs, ys = np.where(nucLabels == i)
-#         xc, yc = xs.mean().astype(int), ys.mean().astype(int)
-#         plt.text(x= yc, y = xc, s = i,
-#                 color = myCmap(i))
-#         if i %100 == 0:
-#             print(i)        
-    
-#     plt.tight_layout()
-#     plt.show()    
-
-#     
+#         circ = plt.Circle((rol[coords[0]], rol[coords[1]]), 2 * rol['radius'], 
+#                           linewidth = 0.7, fill = False, alpha = 0.8, 
+#                           color = myCmap(rol[label_name]))
+#         circ_patches.append(circ)
+# #         ax.add_patch(circ)
+#     # add the circles as a collection of patches (faster)
+#     col1 = col.PatchCollection(circ_patches, match_original=True)
+#     ax.add_collection(col1)
+        # if (i %100) == 0:
+        #     print(i)
+    plt.tight_layout()
+    plt.show()    
