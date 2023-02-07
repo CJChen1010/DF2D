@@ -273,7 +273,7 @@ for i, file in enumerate(all_files):
         print('Cleaning {}'.format(re.search(fov_pat, file).group(0)))
     spots_fov = readSpots(file, FOVcoords)
 
-    fov_X = spots_fov[['weight_max', 'area']].to_numpy()
+    fov_X = spots_fov[['weight_max', 'area', 'weight_mean']].to_numpy()
     fov_X = (fov_X - X_mean) / X_std
     spots_fov['EmptyProb'] = clf.predict_proba(fov_X)[:, 1]
     spots_pass = spots_fov.loc[spots_fov['EmptyProb'] <= prob_thresh]
